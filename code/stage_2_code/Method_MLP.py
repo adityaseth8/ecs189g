@@ -15,7 +15,7 @@ import numpy as np
 class Method_MLP(method, nn.Module):
     data = None
     # it defines the max rounds to train the model
-    max_epoch = 500
+    max_epoch = 10
     # it defines the learning rate for gradient descent based optimizer for model learning
     learning_rate = 1e-3
 
@@ -26,10 +26,10 @@ class Method_MLP(method, nn.Module):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
         # check here for nn.Linear doc: https://pytorch.org/docs/stable/generated/torch.nn.Linear.html
-        self.fc_layer_1 = nn.Linear(784, 1)
+        self.fc_layer_1 = nn.Linear(784, 50)
         # check here for nn.ReLU doc: https://pytorch.org/docs/stable/generated/torch.nn.ReLU.html
         self.activation_func_1 = nn.ReLU()
-        self.fc_layer_2 = nn.Linear(1, 60000)
+        self.fc_layer_2 = nn.Linear(50, 10)
         # check here for nn.Softmax doc: https://pytorch.org/docs/stable/generated/torch.nn.Softmax.html
         self.activation_func_2 = nn.Softmax(dim=1)
 
@@ -61,11 +61,21 @@ class Method_MLP(method, nn.Module):
         # it will be an iterative gradient updating process
         # we don't do mini-batch, we use the whole input as one batch
         # you can try to split X and y into smaller-sized batches by yourself
+        prev_loss = 0
+        threshold = 1e-4
+
         for epoch in range(self.max_epoch): # you can do an early stop if self.max_epoch is too much...
+            print("epoch", epoch)
             # get the output, we need to covert X into torch.tensor so pytorch algorithm can operate on it
             # print(y)
-            print(np.array(y))
-            print(len(np.array(y)), len(np.array(y).T))
+            # print("test")
+            # print(np.array(y))
+            # print(len(np.array(y)), len(np.array(y).T))
+            # print("forward tensor length: ", len(torch.FloatTensor(np.array(X))))
+            #
+            # exit(0)
+
+            # might change
             y_pred = self.forward(torch.FloatTensor(np.array(X)))
             # convert y to torch.tensor as well
             y_true = torch.LongTensor(np.array(y).T)
@@ -81,10 +91,14 @@ class Method_MLP(method, nn.Module):
             # update the variables according to the optimizer and the gradients calculated by the above loss.backward function
             optimizer.step()
 
-            if epoch%100 == 0:
-                accuracy_evaluator.data = {'true_y': y_true, 'pred_y': y_pred.max(1)[1]}
-                print('Epoch:', epoch, 'Accuracy:', accuracy_evaluator.evaluate(), 'Loss:', train_loss.item())
-    
+
+            # if epoch%100 == 0:
+            accuracy_evaluator.data = {'true_y': y_true, 'pred_y': y_pred.max(1)[1]}
+            print('Epoch:', epoch, 'Accuracy:', accuracy_evaluator.evaluate(), 'Loss:', train_loss.item())
+
+            if (train_loss.item() - prev_loss) < threshold:
+                break
+
     def test(self, X):
         # do the testing, and result the result
         y_pred = self.forward(torch.FloatTensor(np.array(X)))

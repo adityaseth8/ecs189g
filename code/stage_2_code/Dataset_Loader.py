@@ -6,6 +6,7 @@ Concrete IO class for a specific dataset
 # License: TBD
 
 from code.base_class.dataset import dataset
+import numpy as np
 
 
 class Dataset_Loader(dataset):
@@ -27,6 +28,9 @@ class Dataset_Loader(dataset):
             X.append(elements[1:])
             y.append(elements[0])
         f.close()
+
+        # print("Number of unique in y test", np.unique(y))
+
         return X, y
 
     def load(self):

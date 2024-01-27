@@ -22,9 +22,9 @@ if 1:
     data_obj.dataset_test_file_name = 'test.csv'
 
     method_obj = Method_MLP('multi-layer perceptron', '')
-    #
+
     result_obj = Result_Saver('saver', '')
-    result_obj.result_destination_folder_path = '../../result/stage_2_result/MLP_'
+    result_obj.result_destination_folder_path = '../../result/stage_2_result/MLP/'
     result_obj.result_destination_file_name = 'prediction_result'
 
     setting_obj = Setting('pre split train test', '')
@@ -34,7 +34,6 @@ if 1:
 
     # ---- running section ---------------------------------
     print('************ Start ************')
-    results = data_obj.load()
 
     setting_obj.prepare(data_obj, method_obj, result_obj, evaluate_obj)
     setting_obj.print_setup_summary()
