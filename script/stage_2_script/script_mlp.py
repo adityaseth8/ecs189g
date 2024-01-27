@@ -24,7 +24,7 @@ if 1:
     method_obj = Method_MLP('multi-layer perceptron', '')
 
     result_obj = Result_Saver('saver', '')
-    result_obj.result_destination_folder_path = '../../result/stage_2_result/MLP/'
+    result_obj.result_destination_folder_path = '../../result/stage_2_result/MLP_'
     result_obj.result_destination_file_name = 'prediction_result'
 
     setting_obj = Setting('pre split train test', '')

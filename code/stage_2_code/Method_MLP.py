@@ -10,12 +10,14 @@ from code.stage_2_code.Evaluate_Accuracy import Evaluate_Accuracy
 import torch
 from torch import nn
 import numpy as np
+import pandas as pd
+import os
 
 
 class Method_MLP(method, nn.Module):
     data = None
     # it defines the max rounds to train the model
-    max_epoch = 10
+    max_epoch = 5
     # it defines the learning rate for gradient descent based optimizer for model learning
     learning_rate = 1e-3
 
@@ -25,11 +27,18 @@ class Method_MLP(method, nn.Module):
     def __init__(self, mName, mDescription):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
+
+        # Things to test:
+        # 1. more layers,
+        # 2. different activation functions,
+        # 3. different number of intermediate neurons in each layer
+        # 4. 
+
         # check here for nn.Linear doc: https://pytorch.org/docs/stable/generated/torch.nn.Linear.html
-        self.fc_layer_1 = nn.Linear(784, 50)
+        self.fc_layer_1 = nn.Linear(784, 75)
         # check here for nn.ReLU doc: https://pytorch.org/docs/stable/generated/torch.nn.ReLU.html
         self.activation_func_1 = nn.ReLU()
-        self.fc_layer_2 = nn.Linear(50, 10)
+        self.fc_layer_2 = nn.Linear(75, 10)
         # check here for nn.Softmax doc: https://pytorch.org/docs/stable/generated/torch.nn.Softmax.html
         self.activation_func_2 = nn.Softmax(dim=1)
 
@@ -62,10 +71,10 @@ class Method_MLP(method, nn.Module):
         # we don't do mini-batch, we use the whole input as one batch
         # you can try to split X and y into smaller-sized batches by yourself
         prev_loss = 0
-        threshold = 1e-4
+        threshold = 1e-3
+        data = []
 
         for epoch in range(self.max_epoch): # you can do an early stop if self.max_epoch is too much...
-            print("epoch", epoch)
             # get the output, we need to covert X into torch.tensor so pytorch algorithm can operate on it
             # print(y)
             # print("test")
@@ -91,13 +100,32 @@ class Method_MLP(method, nn.Module):
             # update the variables according to the optimizer and the gradients calculated by the above loss.backward function
             optimizer.step()
 
-
             # if epoch%100 == 0:
             accuracy_evaluator.data = {'true_y': y_true, 'pred_y': y_pred.max(1)[1]}
-            print('Epoch:', epoch, 'Accuracy:', accuracy_evaluator.evaluate(), 'Loss:', train_loss.item())
+            accuracy = accuracy_evaluator.evaluate()
+            loss = train_loss.item()
+            print('Epoch:', epoch, 'Accuracy:', accuracy, 'Loss:', loss)
 
+            # append epoch, accuracy, and loss to data frame per epoch
+            eval_metrics = [epoch, accuracy, loss]
+            data.append(eval_metrics)
+
+            # convergence condition
             if (train_loss.item() - prev_loss) < threshold:
                 break
+
+        # write to metrics file
+        i = 1
+        file_name = "metrics.csv"
+        file_path = f"../../result/stage_2_result/metrics.csv"
+
+        while os.path.exists(file_path):
+            file_name = f"metrics{i}.csv"
+            file_path = f"../../result/stage_2_result/{file_name}"
+            i += 1
+
+        df = pd.DataFrame(data, columns=["epochs", "accuracy", "loss"])
+        df.to_csv(file_path, index=False)
 
     def test(self, X):
         # do the testing, and result the result
