@@ -12,6 +12,7 @@ from torch import nn
 import numpy as np
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
 
 
 class Method_MLP(method, nn.Module):
@@ -72,21 +73,19 @@ class Method_MLP(method, nn.Module):
         # it will be an iterative gradient updating process
         # we don't do mini-batch, we use the whole input as one batch
         # you can try to split X and y into smaller-sized batches by yourself
+
+        # convergence condition
         prev_loss = 0
         threshold = 1e-6
         data = []
 
+        # plotting
+        epochs_trained = []
+        losses_per_epoch = []
+
         for epoch in range(self.max_epoch): # you can do an early stop if self.max_epoch is too much...
             # get the output, we need to covert X into torch.tensor so pytorch algorithm can operate on it
-            # print(y)
-            # print("test")
-            # print(np.array(y))
-            # print(len(np.array(y)), len(np.array(y).T))
-            # print("forward tensor length: ", len(torch.FloatTensor(np.array(X))))
-            #
-            # exit(0)
 
-            # might change
             y_pred = self.forward(torch.FloatTensor(np.array(X)))
             # convert y to torch.tensor as well
             y_true = torch.LongTensor(np.array(y).T)
@@ -107,6 +106,9 @@ class Method_MLP(method, nn.Module):
             accuracy = accuracy_evaluator.evaluate()
             current_loss = train_loss.item()
             print('Epoch:', epoch, 'Accuracy:', accuracy, 'Loss:', current_loss)
+
+            losses_per_epoch.append(current_loss)
+            epochs_trained.append(epoch)
 
             # append epoch, accuracy, and loss to data frame per epoch
             eval_metrics = [epoch, accuracy, current_loss]
@@ -129,6 +131,15 @@ class Method_MLP(method, nn.Module):
 
         df = pd.DataFrame(data, columns=["epochs", "accuracy", "loss"])
         df.to_csv(file_path, index=False)
+
+        # generate plot
+        plt.plot(epochs_trained, losses_per_epoch, label='Training Loss')
+        plt.xlabel('Training Epoch')
+        plt.ylabel('Cross Entropy Loss')
+        plt.title('Training Convergence Plot')
+        plt.legend()
+        plt.savefig("../../result/stage_2_result/plot")
+        plt.show()
 
     def test(self, X):
         # do the testing, and result the result
