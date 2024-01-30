@@ -17,9 +17,9 @@ import os
 class Method_MLP(method, nn.Module):
     data = None
     # it defines the max rounds to train the model
-    max_epoch = 250
+    max_epoch = 500
     # it defines the learning rate for gradient descent based optimizer for model learning
-    learning_rate = 1e-3
+    learning_rate = 1e-2
 
     # it defines the the MLP model architecture, e.g.,
     # how many layers, size of variables in each layer, activation function, etc.
@@ -73,7 +73,7 @@ class Method_MLP(method, nn.Module):
         # we don't do mini-batch, we use the whole input as one batch
         # you can try to split X and y into smaller-sized batches by yourself
         prev_loss = 0
-        threshold = 2e-3
+        threshold = 1e-6
         data = []
 
         for epoch in range(self.max_epoch): # you can do an early stop if self.max_epoch is too much...
@@ -113,8 +113,9 @@ class Method_MLP(method, nn.Module):
             data.append(eval_metrics)
 
             # convergence condition
-            if (current_loss - prev_loss) < threshold:
+            if abs(current_loss - prev_loss) < threshold:
                 break
+            prev_loss = current_loss
 
         # write to metrics file
         i = 1
