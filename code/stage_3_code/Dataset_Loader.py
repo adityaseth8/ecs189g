@@ -2,7 +2,6 @@ from code.base_class.dataset import dataset
 import pickle
 import numpy as np
 
-
 class Dataset_Loader(dataset):
     data = None
     dataset_source_folder_path = None
@@ -30,7 +29,7 @@ class Dataset_Loader(dataset):
             X_test.append(image_matrix)
             y_test.append(instance['label'])
 
-        print("Number of unique in y test", np.unique(y))
+        print("Number of unique in y test", np.unique(y_train))
 
         return X_train, y_train, X_test, y_test
 

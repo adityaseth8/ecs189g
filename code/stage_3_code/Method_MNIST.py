@@ -4,6 +4,8 @@ from torch import nn
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import torch.nn.functional as F
+from code.stage_3_code.Evaluate_Accuracy import Evaluate_Accuracy
 
 class Method_MNIST(method, nn.Module):
     data = None
@@ -18,12 +20,12 @@ class Method_MNIST(method, nn.Module):
         self.fc1 = nn.Linear(16*7*7, num_classes)
 
     def forward(self, x):
-        # x = F.relu(self.conv1(x))
-        # x = self.pool(x)
-        # x = F.relu(self.conv2(x))
-        # x = self.pool(x)
-        # x = x.reshape(x.shape[0], -1)
-        # x = self.fc1(x)
+        x = F.relu(self.conv1(x))
+        x = self.pool(x)
+        x = F.relu(self.conv2(x))
+        x = self.pool(x)
+        x = x.reshape(x.shape[0], -1)
+        x = self.fc1(x)
         return x
 
     def train(self, X, y):
@@ -33,7 +35,7 @@ class Method_MNIST(method, nn.Module):
 
         for epoch in range(self.max_epoch):
             y_pred = self.forward(torch.FloatTensor(np.array(X)))
-            y_true = torch.LongTensor(np.array(y).flatten())  # Flatten the array
+            y_true = torch.LongTensor(np.array(y).flatten())
             train_loss = loss_function(y_pred, y_true)
             optimizer.zero_grad()
             train_loss.backward()
