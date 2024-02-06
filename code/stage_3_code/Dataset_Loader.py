@@ -5,8 +5,7 @@ import numpy as np
 class Dataset_Loader(dataset):
     data = None
     dataset_source_folder_path = None
-    dataset_train_file_name = None
-    dataset_test_file_name = None
+    dataset_file_name = None
 
     def __init__(self, dName=None, dDescription=None):
         super().__init__(dName, dDescription)
@@ -36,5 +35,5 @@ class Dataset_Loader(dataset):
     def load(self):
         print('loading data...')
 
-        train_features, train_labels, test_features, test_labels = self.parse(self.dataset_train_file_name)
+        train_features, train_labels, test_features, test_labels = self.parse(self.dataset_file_name)
         return {'X_train': train_features, 'y_train': train_labels, 'X_test': test_features, 'y_test': test_labels}
