@@ -1,4 +1,6 @@
 from code.stage_3_code.Method_MNIST import Method_MNIST
+from code.stage_3_code.Method_CIFAR import Method_CIFAR
+# from code.stage_3_code.Method_CIFAR import Method_CIFAR
 from code.stage_3_code.Dataset_Loader import Dataset_Loader
 from code.stage_3_code.Result_Saver import Result_Saver
 from code.stage_3_code.Evaluate_Accuracy import Evaluate_Accuracy
@@ -28,6 +30,8 @@ if 1:
     data_obj_o.dataset_file_name = 'ORL'
 
     method_obj_m = Method_MNIST('convolutional neural network', '')
+    method_obj_c = Method_CIFAR('convolutional neural network', '')
+    # method_obj_o = Method_ORL('convolutional neural network', '')
     # ADD OTHER 2 LATER
 
     result_obj_m = Result_Saver('saver_mnist', '')
@@ -51,12 +55,32 @@ if 1:
     evaluate_obj_o = Evaluate_Accuracy('orl accuracy', '')
 
     # ---- running section ---------------------------------
+    # print('************ Start ************')
+    # setting_obj_m.prepare(data_obj_m, method_obj_m, result_obj_m, evaluate_obj_m)
+    # setting_obj_m.print_setup_summary()
+    # mean_score, std_score = setting_obj_m.load_run_save_evaluate()
+    # print('************ Overall Performance ************')
+    # print('CNN MNIST Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
+    # print('************ Finish ************')
+    # ------------------------------------------------------
+
+    # ---- running section ---------------------------------
     print('************ Start ************')
-    setting_obj_m.prepare(data_obj_m, method_obj_m, result_obj_m, evaluate_obj_m)
-    setting_obj_m.print_setup_summary()
-    mean_score, std_score = setting_obj_m.load_run_save_evaluate()
+    setting_obj_c.prepare(data_obj_c, method_obj_c, result_obj_c, evaluate_obj_c)
+    setting_obj_c.print_setup_summary()
+    mean_score, std_score = setting_obj_c.load_run_save_evaluate()
     print('************ Overall Performance ************')
-    print('CNN MNIST Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
+    print('CNN CIFAR Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
     print('************ Finish ************')
     # ------------------------------------------------------
+
+    # # ---- running section ---------------------------------
+    # print('************ Start ************')
+    # setting_obj_o.prepare(data_obj_o, method_obj_o, result_obj_o, evaluate_obj_o)
+    # setting_obj_o.print_setup_summary()
+    # mean_score, std_score = setting_obj_o.load_run_save_evaluate()
+    # print('************ Overall Performance ************')
+    # print('CNN CIFAR Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
+    # print('************ Finish ************')
+    # # ------------------------------------------------------
 
