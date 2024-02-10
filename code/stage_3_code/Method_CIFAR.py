@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 
 class Method_CIFAR(method, nn.Module):
     data = None
-    max_epoch = 15
+    max_epoch = 3
     learning_rate = 1e-3
-    batch_size = 32
+    batch_size = 500
 
     def __init__(self, mName, mDescription, in_channels=3, num_classes=10):
         method.__init__(self, mName, mDescription)
@@ -17,46 +17,49 @@ class Method_CIFAR(method, nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv2d(
                 in_channels=in_channels,
-                out_channels=16,
-                kernel_size=5,
+                out_channels=32,
+                kernel_size=3,
                 stride=1,
                 padding=2,
             ),
             # stride is 2 for max pool
-            # Conv2d: 32 + 2(2) - 5 + 1 = 32
-            # Volume dimensions for Conv2d: 32 * 32 * 16
+            # Conv2d: 32 + 2(2) - 3 + 1 = 34
+            # Volume dimensions for Conv2d: 34 * 34 * 32
 
             # After max pool:
-            # ((32 + 2(1) - 2)/2) + 1 = 17
-            # 17 * 17 * 16
+            # ((34 + 2(2) - 3)/2) + 1 = 18
+            # 18 * 18 * 32
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
+            # nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
         )
         self.conv2 = nn.Sequential(
-            # Conv2d: 17 + 2(2) - 5 + 1 = 17
-            # Volume dimensions for Conv2d: 17 * 17 * 16
+            # Conv2d: 18 + 2(2) - 3 + 1 = 20
+            # Volume dimensions for Conv2d: 20 * 20 * 32
 
             # After max pool:
-            # (floor((17 + 2(1)-2))/2) + 1 = 9
-            # 9 * 9 * 16
-            nn.Conv2d(16, 32, 5, 1, 2),
+            # (floor((20 + 2(2)-3))/2) + 1 = 11
+            # 11 * 11 * 64 # 64?
+            nn.Conv2d(32, 64, 3, 1, 2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
+            # nn.Dropout(0.2)
         )
         self.conv3 = nn.Sequential(
-            # Conv2d: 9 + 2(2) -5 + 1 = 9
-            # Volume dimensions for Conv2d: 9 * 9 * 32
+            # Conv2d: 11 + 2(2) - 3 + 1 = 13
+            # Volume dimensions for Conv2d: 13 * 13 * 64
 
             # After max pool:
-            # (floor((9 + 2(1)-2))/2) + 1 = 5
-            # 5 * 5 * 64
-            nn.Conv2d(32, 64, 5, 1, 2),
+            # (floor((11 + 2(2)-3))/2) + 1 = 7
+            # 7 * 7 * 128
+            nn.Conv2d(64, 128, 3, 1, 2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
         )
 
         # output dim * output dim * 64
-        self.out = nn.Linear(5 * 5 * 64, num_classes)
+        # self.out = nn.Linear(7 * 7 * 128, num_classes)
+        self.out = nn.Linear(15488, num_classes)
+
 
     def forward(self, x):
         x = self.conv1(x)
