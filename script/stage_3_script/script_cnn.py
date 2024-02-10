@@ -56,7 +56,7 @@ if 1:
     setting_obj_m.print_setup_summary()
     mean_score, std_score = setting_obj_m.load_run_save_evaluate()
     print('************ Overall Performance ************')
-    print('MLP Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
+    print('CNN MNIST Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
     print('************ Finish ************')
     # ------------------------------------------------------
 
