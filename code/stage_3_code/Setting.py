@@ -1,3 +1,5 @@
+import numpy as np
+
 from code.base_class.setting import setting
 
 class Setting(setting):
@@ -9,6 +11,8 @@ class Setting(setting):
         # print(len(X_train[0]))
         # exit(0)
 
+        num_labels = len(np.unique(y_train))
+
         # run MethodModule
         self.method.data = {'train': {'X': X_train, 'y': y_train}, 'test': {'X': X_test, 'y': y_test}}
         learned_data = self.method.run()
@@ -19,4 +23,4 @@ class Setting(setting):
 
         self.evaluate.data = learned_data
 
-        return self.evaluate.evaluate(10), None
+        return self.evaluate.evaluate(num_labels), None
