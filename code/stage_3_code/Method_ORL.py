@@ -13,37 +13,6 @@ class Method_ORL(method, nn.Module):
     def __init__(self, mName, mDescription, in_channels=1, num_classes=40):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
-        # self.conv1 = nn.Sequential(
-        #     nn.Conv2d(
-        #         in_channels=in_channels,
-        #         out_channels=16,
-        #         kernel_size=5,
-        #         stride=1,
-        #         padding=2,
-        #     ),
-        #     # stride is 2 for max pool
-        #     # Conv2d: 28 + 2(2) - 5 + 1 = 28
-        #     # Volume dimensions for Conv2d: 28 * 28 * 16
-        #
-        #     # After max pool:
-        #     # ((28 + 2(1) - 2)/2) + 1 = 15
-        #     nn.ReLU(),
-        #     nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
-        # )
-        #
-        # #  height after pooling * width after pooling * number of output channels
-        # self.out = nn.Linear(57 * 47 * 16, num_classes)
-        # New convolutional layer
-        # self.conv2 = nn.Sequential(
-        #     nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1),
-        #     nn.ReLU(),
-        #     nn.MaxPool2d(kernel_size=2, stride=2),
-        # )
-        #
-        # # Adjust input dimensions for the linear layer based on the new output
-        # self.out = nn.Linear(29 * 24 * 32, num_classes)
-
-        # From MNIST
         self.conv1 = nn.Sequential(
             nn.Conv2d(
                 in_channels=in_channels,
@@ -93,7 +62,6 @@ class Method_ORL(method, nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.linear_layers(x)
-
         return x
 
     def train(self, X, y):
@@ -114,11 +82,8 @@ class Method_ORL(method, nn.Module):
                 X_batch = torch.FloatTensor(np.array(X[start_idx:end_idx]))
                 y_batch = torch.LongTensor(np.array(y[start_idx:end_idx]))
 
-                print("X batch shape: ", X_batch.shape)
-                print("y_batch shape: ", y_batch.shape)
-
-                # exit(0)
-                # want 40 * 40 for 40 labels with prediction probabilities
+                # print("X batch shape: ", X_batch.shape)
+                # print("y_batch shape: ", y_batch.shape)
 
                 y_pred = self.forward(X_batch)
                 print("loss", y_pred.shape, y_batch.shape)
@@ -145,8 +110,6 @@ class Method_ORL(method, nn.Module):
 
     def test(self, X):
         X_tensor = torch.FloatTensor(np.array(X))
-        print(X_tensor.shape)
-        # X_tensor = X_tensor.view(-1, 1, 112, 92)     # <---
         y_pred = self.forward(X_tensor)
         print(X_tensor.shape)
         print("y_pred.shape in test:", y_pred.shape)
