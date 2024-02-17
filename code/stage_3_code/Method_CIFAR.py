@@ -4,70 +4,52 @@ from torch import nn
 from code.stage_3_code.Evaluate_Accuracy import Evaluate_Accuracy
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
+import torch.nn.functional as F
+
 
 class Method_CIFAR(method, nn.Module):
     data = None
-    max_epoch = 3
+    max_epoch = 4
     learning_rate = 1e-3
-    batch_size = 500
+    batch_size = 64
 
     def __init__(self, mName, mDescription, in_channels=3, num_classes=10):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(
-                in_channels=in_channels,
-                out_channels=32,
-                kernel_size=3,
-                stride=1,
-                padding=2,
-            ),
-            # stride is 2 for max pool
-            # Conv2d: 32 + 2(2) - 3 + 1 = 34
-            # Volume dimensions for Conv2d: 34 * 34 * 32
 
-            # After max pool:
-            # ((34 + 2(2) - 3)/2) + 1 = 18
-            # 18 * 18 * 32
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.network = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
             nn.ReLU(),
-            # nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
-        )
-        self.conv2 = nn.Sequential(
-            # Conv2d: 18 + 2(2) - 3 + 1 = 20
-            # Volume dimensions for Conv2d: 20 * 20 * 32
-
-            # After max pool:
-            # (floor((20 + 2(2)-3))/2) + 1 = 11
-            # 11 * 11 * 64 # 64?
-            nn.Conv2d(32, 64, 3, 1, 2),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
-            # nn.Dropout(0.2)
-        )
-        self.conv3 = nn.Sequential(
-            # Conv2d: 11 + 2(2) - 3 + 1 = 13
-            # Volume dimensions for Conv2d: 13 * 13 * 64
+            nn.MaxPool2d(2, 2),  # output: 64 x 16 x 16
+            # nn.BatchNorm2d(64),
 
-            # After max pool:
-            # (floor((11 + 2(2)-3))/2) + 1 = 7
-            # 7 * 7 * 128
-            nn.Conv2d(64, 128, 3, 1, 2),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1), nn.ReLU(),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
-        )
+            nn.MaxPool2d(2, 2),  # output: 128 x 8 x 8
+            # nn.BatchNorm2d(128),
 
-        # output dim * output dim * 64
-        # self.out = nn.Linear(7 * 7 * 128, num_classes)
-        self.out = nn.Linear(15488, num_classes)
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),  # output: 256 x 4 x 4
+            # nn.BatchNorm2d(256),
 
+            nn.Flatten(),
+            nn.Linear(256 * 4 * 4, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Linear(512, 10))
+
+        self.network.to(self.device)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = x.view(x.size(0), -1)
-        output = self.out(x)
-        return output
+        return self.network(x)
 
     def train(self, X, y):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -76,19 +58,15 @@ class Method_CIFAR(method, nn.Module):
         losses = []
         batches = []
 
-        num_batches = len(X) // self.batch_size    # floor division
+        num_batches = len(X) // self.batch_size  # floor division
         for epoch in range(self.max_epoch):
             losses, batches = [], []
-
             for batch_idx in range(num_batches):
-                # if batch_idx == 51:
-                #     break
-
                 start_idx = batch_idx * self.batch_size
                 end_idx = (batch_idx + 1) * self.batch_size
 
-                X_batch = torch.FloatTensor(np.array(X[start_idx:end_idx]))
-                y_batch = torch.LongTensor(np.array(y[start_idx:end_idx]).flatten())
+                X_batch = torch.FloatTensor(np.array(X[start_idx:end_idx])).to(self.device)
+                y_batch = torch.LongTensor(np.array(y[start_idx:end_idx]).flatten()).to(self.device)
 
                 # Reshape X_batch to have the correct input shape
                 X_batch = X_batch.view(-1, 3, 32, 32)
@@ -99,7 +77,7 @@ class Method_CIFAR(method, nn.Module):
                 train_loss.backward()
                 optimizer.step()
 
-                accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred.max(1)[1]}
+                accuracy_evaluator.data = {'true_y': y_batch.cpu(), 'pred_y': y_pred.cpu().max(1)[1]}
                 accuracy = accuracy_evaluator.evaluate(10)  # make sure to change arg for other two datasets
                 current_loss = train_loss.item()
                 losses.append(current_loss)
@@ -111,24 +89,42 @@ class Method_CIFAR(method, nn.Module):
             plt.ylabel('Cross Entropy Loss')
             plt.title('Training Convergence Plot')
             plt.legend()
-            plt.savefig(f"../../result/stage_3_result/cifar_plot{epoch}.png")
-
+            plt.savefig(f"./result/stage_3_result/cifar_plot{epoch}.png")
             plt.show()
 
     def test(self, X):
-        X_tensor = torch.FloatTensor(np.array(X))
-        X_tensor = X_tensor.view(-1, 3, 32, 32)    # <---
-        y_pred = self.forward(X_tensor)
-        return y_pred.max(1)[1]
+        X_tensor = torch.FloatTensor(np.array(X)).to(self.device)
+        X_tensor = X_tensor.view(-1, 3, 32, 32)
+
+        batch_size = 10  # Adjust the batch size as needed
+        num_batches = len(X) // batch_size + 1  # Add 1 to include the last batch
+
+        all_preds = []
+
+        for batch_idx in range(num_batches):
+            start_idx = batch_idx * batch_size
+            end_idx = min((batch_idx + 1) * batch_size, len(X))  # Handle the last batch
+
+            X_batch = torch.Tensor(np.array(X[start_idx:end_idx])).to(self.device)
+            X_batch = X_batch.view(-1, 3, 32, 32)
+
+            y_pred = self.forward(X_batch)
+            all_preds.append(y_pred.cpu())
+        all_preds = torch.cat(all_preds, dim=0)
+        return all_preds.max(1)[1]
 
     def run(self):
         print('method running...')
         print('--start training...')
-        self.train(self.data['train']['X'], self.data['train']['y'])
+        X_train, y_train = self.data['train']['X'], self.data['train']['y']
+        X_test, y_test = self.data['test']['X'], self.data['test']['y']
+        self.train(X_train, y_train)
         print('--start testing...')
-        pred_y = self.test(self.data['test']['X'])
+        pred_y = self.test(X_test)
+        print('--finish testing...')
         accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
-        accuracy_evaluator.data = {'true_y': self.data['test']['y'], 'pred_y': pred_y}
+        accuracy_evaluator.data = {'true_y': y_test, 'pred_y': pred_y}
+        print('--start evaluation...')
         print(accuracy_evaluator.evaluate(10))
 
         return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
