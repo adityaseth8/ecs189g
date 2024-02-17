@@ -6,52 +6,95 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class Method_ORL(method, nn.Module):
-    data = None
-    max_epoch = 2
+    max_epoch = 50
     learning_rate = 1e-3
-    batch_size = 32
+    batch_size = 41
 
     def __init__(self, mName, mDescription, in_channels=1, num_classes=40):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
+        # self.conv1 = nn.Sequential(
+        #     nn.Conv2d(
+        #         in_channels=in_channels,
+        #         out_channels=16,
+        #         kernel_size=5,
+        #         stride=1,
+        #         padding=2,
+        #     ),
+        #     # stride is 2 for max pool
+        #     # Conv2d: 28 + 2(2) - 5 + 1 = 28
+        #     # Volume dimensions for Conv2d: 28 * 28 * 16
+        #
+        #     # After max pool:
+        #     # ((28 + 2(1) - 2)/2) + 1 = 15
+        #     nn.ReLU(),
+        #     nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
+        # )
+        #
+        # #  height after pooling * width after pooling * number of output channels
+        # self.out = nn.Linear(57 * 47 * 16, num_classes)
+        # New convolutional layer
+        # self.conv2 = nn.Sequential(
+        #     nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1),
+        #     nn.ReLU(),
+        #     nn.MaxPool2d(kernel_size=2, stride=2),
+        # )
+        #
+        # # Adjust input dimensions for the linear layer based on the new output
+        # self.out = nn.Linear(29 * 24 * 32, num_classes)
+
+        # From MNIST
         self.conv1 = nn.Sequential(
             nn.Conv2d(
                 in_channels=in_channels,
+                out_channels=8,
+                kernel_size=5,
+                stride=1,
+                padding=2,
+            ),
+            # Conv2d: 28 + 2(2) - 5 + 1 = 28
+            # Volume dimensions for Conv2d: 28 * 28 * 16
+
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
+            # After max pool laying:
+            # ((28 + 2(1) - 2)/2) + 1 = 15
+            # Output volume dimensions: 15 * 15 * 16
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(
+                in_channels=8,
                 out_channels=16,
                 kernel_size=5,
                 stride=1,
                 padding=2,
             ),
-            # stride is 2 for max pool
-            # Conv2d: 28 + 2(2) - 5 + 1 = 28
-            # Volume dimensions for Conv2d: 28 * 28 * 16
+            # Conv2d: 15 * 2(2) - 5 + 1 = 15
+            # Volume dimensions for Conv2d: 15 * 15 * 16
 
-            # After max pool:
-            # ((28 + 2(1) - 2)/2) + 1 = 15
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
+            # After max pool laying:
+            # ((15 + 2(1) - 2)/2) + 1 = 8
+            # Output volume dimensions: 8 * 8 * 32
         )
-        # self.conv2 = nn.Sequential(
-        #     nn.Conv2d(16, 32, 5, 1, 2),
-        #     nn.ReLU(),
-        #     nn.MaxPool2d(2),
-        # )
-        # fully connected layer, output 10 classes
-        # self.out = nn.Linear(32 * 7 * 7, num_classes)
 
-        #  height after pooling * width after pooling * number of output channels
-        self.out = nn.Linear(57 * 47 * 16, num_classes)
+        self.linear_layers = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(16 * 8 * 8, 160),
+            nn.ReLU(),
+            nn.Linear(160, 80),
+            nn.ReLU(),
+            nn.Linear(80, num_classes)
+        )
 
     def forward(self, x):
         x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.linear_layers(x)
 
-        # Keeps the first dimension (number of batches)
-        # Other dimensions are multiplied together to get the second dimension
-        x = x.view(x.size(0), -1)
-        print(x.shape)
-
-        output = self.out(x)
-        return output
+        return x
 
     def train(self, X, y):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -69,9 +112,13 @@ class Method_ORL(method, nn.Module):
                 end_idx = (batch_idx + 1) * self.batch_size
 
                 X_batch = torch.FloatTensor(np.array(X[start_idx:end_idx]))
-                y_batch = torch.LongTensor(np.array(y[start_idx:end_idx]).flatten())
+                y_batch = torch.LongTensor(np.array(y[start_idx:end_idx]))
 
                 print("X batch shape: ", X_batch.shape)
+                print("y_batch shape: ", y_batch.shape)
+
+                # exit(0)
+                # want 40 * 40 for 40 labels with prediction probabilities
 
                 y_pred = self.forward(X_batch)
                 print("loss", y_pred.shape, y_batch.shape)
@@ -92,23 +139,19 @@ class Method_ORL(method, nn.Module):
             plt.ylabel('Cross Entropy Loss')
             plt.title('Training Convergence Plot')
             plt.legend()
-            plt.savefig(f"../../result/stage_3_result/orl_plot{epoch}.png")
+            plt.savefig(f"./result/stage_3_result/orl_plot{epoch}.png")
 
             plt.show()
 
     def test(self, X):
         X_tensor = torch.FloatTensor(np.array(X))
         print(X_tensor.shape)
-        X_tensor = X_tensor.view(-1, 1, 112, 92)     # <---
+        # X_tensor = X_tensor.view(-1, 1, 112, 92)     # <---
         y_pred = self.forward(X_tensor)
         print(X_tensor.shape)
         print("y_pred.shape in test:", y_pred.shape)
-        print(y_pred.max(1)[1])
-        exit(0)
+        print("y_pred.shape value in test: ", y_pred.max(1)[1])
         return y_pred.max(1)[1]
-
-    def condense_tensor(self):
-        X_tensor = torch.view(self.x, self.y, 1)
 
     def run(self):
         print('method running...')
