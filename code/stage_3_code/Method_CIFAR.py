@@ -26,18 +26,15 @@ class Method_CIFAR(method, nn.Module):
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),  # output: 64 x 16 x 16
-            # nn.BatchNorm2d(64),
 
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1), nn.ReLU(),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),  # output: 128 x 8 x 8
-            # nn.BatchNorm2d(128),
 
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),  # output: 256 x 4 x 4
-            # nn.BatchNorm2d(256),
 
             nn.Flatten(),
             nn.Linear(256 * 4 * 4, 1024),
@@ -84,13 +81,13 @@ class Method_CIFAR(method, nn.Module):
                 batches.append(batch_idx)
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
 
-            plt.plot(batches, losses, label='Training Loss')
-            plt.xlabel('Number of batches')
-            plt.ylabel('Cross Entropy Loss')
-            plt.title('Training Convergence Plot')
-            plt.legend()
-            plt.savefig(f"./result/stage_3_result/cifar_plot{epoch}.png")
-            plt.show()
+        plt.plot(batches, losses, label='Training Loss')
+        plt.xlabel('Number of batches')
+        plt.ylabel('Cross Entropy Loss')
+        plt.title('Training Convergence Plot')
+        plt.legend()
+        plt.savefig(f"./result/stage_3_result/cifar_plot.png")
+        plt.show()
 
     def test(self, X):
         X_tensor = torch.FloatTensor(np.array(X)).to(self.device)
