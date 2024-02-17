@@ -67,7 +67,7 @@ class Method_MNIST(method, nn.Module):
                 optimizer.step()
 
                 accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred.max(1)[1]}
-                accuracy = accuracy_evaluator.evaluate(10)  # make sure to change arg for other two datasets
+                accuracy = accuracy_evaluator.evaluate(10, is_orl_dataset=False)  # make sure to change arg for other two datasets
                 current_loss = train_loss.item()
                 losses.append(current_loss)
                 batches.append(batch_idx)
@@ -96,6 +96,6 @@ class Method_MNIST(method, nn.Module):
         pred_y = self.test(self.data['test']['X'])
         accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
         accuracy_evaluator.data = {'true_y': self.data['test']['y'], 'pred_y': pred_y}
-        print(accuracy_evaluator.evaluate(10))
+        print(accuracy_evaluator.evaluate(10, is_orl_dataset=False))
 
         return {'pred_y': pred_y, 'true_y': self.data['test']['y']}

@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 class Method_CIFAR(method, nn.Module):
     data = None
-    max_epoch = 4
+    max_epoch = 1
     learning_rate = 1e-3
     batch_size = 64
 
@@ -75,7 +75,7 @@ class Method_CIFAR(method, nn.Module):
                 optimizer.step()
 
                 accuracy_evaluator.data = {'true_y': y_batch.cpu(), 'pred_y': y_pred.cpu().max(1)[1]}
-                accuracy = accuracy_evaluator.evaluate(10)  # make sure to change arg for other two datasets
+                accuracy = accuracy_evaluator.evaluate(10, is_orl_dataset=False)  # make sure to change arg for other two datasets
                 current_loss = train_loss.item()
                 losses.append(current_loss)
                 batches.append(batch_idx)
@@ -122,6 +122,6 @@ class Method_CIFAR(method, nn.Module):
         accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
         accuracy_evaluator.data = {'true_y': y_test, 'pred_y': pred_y}
         print('--start evaluation...')
-        print(accuracy_evaluator.evaluate(10))
+        print(accuracy_evaluator.evaluate(10, is_orl_dataset=False))
 
         return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
