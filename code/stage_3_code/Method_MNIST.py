@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 class Method_MNIST(method, nn.Module):
     data = None
-    max_epoch = 10
+    max_epoch = 1
     learning_rate = 1e-3
     batch_size = 64
 
@@ -22,29 +22,19 @@ class Method_MNIST(method, nn.Module):
                 stride=1,
                 padding=2,
             ),
-            # stride is 2 for max pool
             # Conv2d: 28 + 2(2) - 5 + 1 = 28
             # Volume dimensions for Conv2d: 28 * 28 * 16
 
             # After max pool:
             # ((28 + 2(1) - 2)/2) + 1 = 15
+            # Volume dimensions after max pooling: 15 * 15 * 16
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
         )
-        # self.conv2 = nn.Sequential(
-        #     nn.Conv2d(16, 32, 5, 1, 2),
-        #     nn.ReLU(),
-        #     nn.MaxPool2d(2),
-        # )
-        # fully connected layer, output 10 classes
-        # self.out = nn.Linear(32 * 7 * 7, num_classes)
-
         self.out = nn.Linear(16 * 15 * 15, num_classes)
-
 
     def forward(self, x):
         x = self.conv1(x)
-        # x = self.conv2(x)
         x = x.view(x.size(0), -1)
         output = self.out(x)
         return output
@@ -61,9 +51,6 @@ class Method_MNIST(method, nn.Module):
             losses, batches = [], []
 
             for batch_idx in range(num_batches):
-                # if batch_idx == 51:
-                #     break
-
                 start_idx = batch_idx * self.batch_size
                 end_idx = (batch_idx + 1) * self.batch_size
 
@@ -91,7 +78,7 @@ class Method_MNIST(method, nn.Module):
             plt.ylabel('Cross Entropy Loss')
             plt.title('Training Convergence Plot')
             plt.legend()
-            plt.savefig(f"../../result/stage_3_result/plot{epoch}.png")
+            plt.savefig(f"./result/stage_3_result/plot{epoch}.png")
 
             plt.show()
 
