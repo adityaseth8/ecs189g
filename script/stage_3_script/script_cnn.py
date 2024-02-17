@@ -8,16 +8,6 @@ from code.stage_3_code.Setting import Setting
 
 import numpy as np
 import torch
-# from sys import argv
-#
-# _, dataset = argv
-# if dataset == 1:
-#     run_mnist = True
-# elif dataset == 2:
-#     run_orl = True
-# elif dataset == 3:
-#     run_cifar = True
-
 
 # ---- Convolutional Neural Network script ----
 # ---- parameter section -------------------------------
@@ -27,15 +17,15 @@ torch.manual_seed(2)
 
 # ---- objection initialization section ---------------
 data_obj_m = Dataset_Loader('MNIST', '')
-data_obj_m.dataset_source_folder_path = '../../data/stage_3_data/'
+data_obj_m.dataset_source_folder_path = './data/stage_3_data/'
 data_obj_m.dataset_file_name = 'MNIST'
 
 data_obj_c = Dataset_Loader('CIFAR', '')
-data_obj_c.dataset_source_folder_path = '../../data/stage_3_data/'
+data_obj_c.dataset_source_folder_path = './data/stage_3_data/'
 data_obj_c.dataset_file_name = 'CIFAR'
 
 data_obj_o = Dataset_Loader('ORL', '')
-data_obj_o.dataset_source_folder_path = '../../data/stage_3_data/'
+data_obj_o.dataset_source_folder_path = './data/stage_3_data/'
 data_obj_o.dataset_file_name = 'ORL'
 
 method_obj_m = Method_MNIST('convolutional neural network', '')
@@ -43,15 +33,15 @@ method_obj_c = Method_CIFAR('convolutional neural network', '')
 method_obj_o = Method_ORL('convolutional neural network', '')
 
 result_obj_m = Result_Saver('saver_mnist', '')
-result_obj_m.result_destination_folder_path = '../../result/stage_3_result/MNIST_'
+result_obj_m.result_destination_folder_path = './result/stage_3_result/MNIST_'
 result_obj_m.result_destination_file_name = 'prediction_result'
 
 result_obj_c = Result_Saver('saver_cifar', '')
-result_obj_c.result_destination_folder_path = '../../result/stage_3_result/CIFAR_'
+result_obj_c.result_destination_folder_path = './result/stage_3_result/CIFAR_'
 result_obj_c.result_destination_file_name = 'prediction_result'
 
 result_obj_o = Result_Saver('saver_orl', '')
-result_obj_o.result_destination_folder_path = '../../result/stage_3_result/ORL_'
+result_obj_o.result_destination_folder_path = './result/stage_3_result/ORL_'
 result_obj_o.result_destination_file_name = 'prediction_result'
 
 setting_obj_m = Setting('mnist pre split train test same file', '')
@@ -68,7 +58,7 @@ evaluate_obj_o = Evaluate_Accuracy('orl accuracy', '')
 # print('************ Start ************')
 # setting_obj_m.prepare(data_obj_m, method_obj_m, result_obj_m, evaluate_obj_m)
 # setting_obj_m.print_setup_summary()
-# mean_score, std_score = setting_obj_m.load_run_save_evaluate()
+# mean_score, std_score = setting_obj_m.load_run_save_evaluate(is_orl_dataset=False)
 # print('************ Overall Performance ************')
 # print('CNN MNIST Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
 # print('************ Finish ************')
@@ -78,7 +68,7 @@ evaluate_obj_o = Evaluate_Accuracy('orl accuracy', '')
 # print('************ Start ************')
 # setting_obj_c.prepare(data_obj_c, method_obj_c, result_obj_c, evaluate_obj_c)
 # setting_obj_c.print_setup_summary()
-# mean_score, std_score = setting_obj_c.load_run_save_evaluate()
+# mean_score, std_score = setting_obj_c.load_run_save_evaluate(is_orl_dataset=False)
 # print('************ Overall Performance ************')
 # print('CNN CIFAR Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
 # print('************ Finish ************')
@@ -88,7 +78,7 @@ evaluate_obj_o = Evaluate_Accuracy('orl accuracy', '')
 print('************ Start ************')
 setting_obj_o.prepare(data_obj_o, method_obj_o, result_obj_o, evaluate_obj_o)
 setting_obj_o.print_setup_summary()
-mean_score, std_score = setting_obj_o.load_run_save_evaluate()
+mean_score, std_score = setting_obj_o.load_run_save_evaluate(is_orl_dataset=True)
 print('************ Overall Performance ************')
 print('CNN ORL Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
 print('************ Finish ************')
