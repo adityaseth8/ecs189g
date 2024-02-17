@@ -19,14 +19,9 @@ class Dataset_Loader(dataset):
         y_train = []  # label
         X_test = []
         y_test = []
+        transform = []
 
-        transform = transforms.Compose([
-          # transforms.Resize((64, 64)),  # Resize to 64x64
-          transforms.ToTensor(),  # Convert to PyTorch Tensor
-          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize        
-        ])
-
-        is_orl_dataset = False
+        is_mnist_dataset, is_orl_dataset, is_cifar_dataset =  False, False, False
 
         f = open(self.dataset_source_folder_path + file_name, 'rb')
         data = pickle.load(f)
@@ -34,32 +29,49 @@ class Dataset_Loader(dataset):
 
         if file_name == "ORL":
             is_orl_dataset = True
-        
+        elif file_name == "CIFAR":
+            is_cifar_dataset = True
+
+        # For CIFAR
+        if is_cifar_dataset:
+            transform = transforms.Compose([
+              # transforms.Resize((64, 64)),  # Resize to 64x64
+              transforms.ToTensor(),  # Convert to PyTorch Tensor
+              transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize
+            ])
+
+        if is_orl_dataset:
+            transform = transforms.Compose([
+                # Convert to grayscale if ORL dataset
+                transforms.Grayscale(),
+                # Resize to desired size (e.g., 32x32)
+                transforms.Resize((28, 28)),
+                # Normalize pixel values by 255
+                transforms.ToTensor(),
+                transforms.Normalize([0.5], [0.5]),
+            ])
+
         for instance in data['train']:
             image_matrix = instance['image']
 
-            if is_orl_dataset:
-                image_matrix = torch.Tensor(image_matrix).view(3, 112, 92)
-                image_matrix = F.rgb_to_grayscale(image_matrix)
+            if is_orl_dataset or is_cifar_dataset:
+                pil_image = Image.fromarray(np.uint8(image_matrix)).convert('RGB')
+                image_matrix = transform(pil_image).numpy()
 
-            pil_image = Image.fromarray(np.uint8(image_matrix)).convert('RGB')
-            image_matrix = transform(pil_image).numpy()
             X_train.append(image_matrix)
             y_train.append(instance['label'])
 
         print("Finished loading and transforming train data")  
 
         for instance in data['test']:
-          image_matrix = instance['image']
-          # image_matrix = image_matrix / 255.0 # normalization of pixel values
-          if is_orl_dataset:
-              image_matrix = torch.Tensor(image_matrix).view(3, 112, 92)
-              image_matrix = F.rgb_to_grayscale(image_matrix)
-          
-          pil_image = Image.fromarray(np.uint8(image_matrix)).convert('RGB')
-          image_matrix = transform(pil_image).numpy()
-          X_test.append(image_matrix)
-          y_test.append(instance['label'])
+            image_matrix = instance['image']
+
+            if is_orl_dataset or is_cifar_dataset:
+                pil_image = Image.fromarray(np.uint8(image_matrix)).convert('RGB')
+                image_matrix = transform(pil_image).numpy()
+
+            X_test.append(image_matrix)
+            y_test.append(instance['label'])
 
         print("Finished loading and transforming train data") 
 
