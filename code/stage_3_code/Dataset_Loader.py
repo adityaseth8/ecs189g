@@ -21,7 +21,7 @@ class Dataset_Loader(dataset):
         y_test = []
         transform = []
 
-        is_mnist_dataset, is_orl_dataset, is_cifar_dataset =  False, False, False
+        is_orl_dataset, is_cifar_dataset = False, False
 
         f = open(self.dataset_source_folder_path + file_name, 'rb')
         data = pickle.load(f)
