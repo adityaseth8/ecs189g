@@ -18,7 +18,8 @@ Install the following packages with pip if you do not have them already.
 3. Execute the following command based on what you want to run: `python -m script.stage_(num)_script.script_(script_name)`.
    - Replace num with the stage num (i.e 3)
    - Replace script_name with the desired script (i.e cifar)
-   - Supported commands:
-      - MNIST: `python -m script.stage_3_script.script_mnist`
-      - CIFAR-10: `python -m script.stage_3_script.script_cifar`
-      - ORL: `python -m script.stage_3_script.script_orl`
+
+## Stage 3 Shortcuts
+   - MNIST: `python -m script.stage_3_script.script_mnist`
+   - CIFAR-10: `python -m script.stage_3_script.script_cifar`
+   - ORL: `python -m script.stage_3_script.script_orl`
