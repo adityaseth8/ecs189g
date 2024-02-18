@@ -19,6 +19,11 @@ Install the following packages with pip if you do not have them already.
    - Replace num with the stage num (i.e 3)
    - Replace script_name with the desired script (i.e cifar)
 
+## Stage 2 Terminal Shortcuts
+   - Decision Tree: `python -m script.stage_2_script.script_decision_tree`
+   - MLP: `python -m script.stage_2_script.script_mlp`
+   - SVM: `python -m script.stage_2_script.script_svm`
+
 ## Stage 3 Terminal Shortcuts
    - MNIST: `python -m script.stage_3_script.script_mnist`
    - CIFAR-10: `python -m script.stage_3_script.script_cifar`
