@@ -22,13 +22,13 @@ class Method_ORL(method, nn.Module):
                 padding=2,
             ),
             # Conv2d: 28 + 2(2) - 5 + 1 = 28
-            # Volume dimensions for Conv2d: 28 * 28 * 16
+            # Volume dimensions for Conv2d: 28 * 28 * 8
 
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
             # After max pool laying:
             # ((28 + 2(1) - 2)/2) + 1 = 15
-            # Output volume dimensions: 15 * 15 * 16
+            # Output volume dimensions: 15 * 15 * 8
         )
 
         self.conv2 = nn.Sequential(
@@ -46,15 +46,15 @@ class Method_ORL(method, nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
             # After max pool laying:
             # ((15 + 2(1) - 2)/2) + 1 = 8
-            # Output volume dimensions: 8 * 8 * 32
+            # Output volume dimensions: 8 * 8 * 16
         )
 
         self.linear_layers = nn.Sequential(
             nn.Flatten(),
             nn.Linear(16 * 8 * 8, 160),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Linear(160, 80),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(80, num_classes)
         )
 
@@ -69,21 +69,16 @@ class Method_ORL(method, nn.Module):
         loss_function = nn.CrossEntropyLoss()
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
-        batches = []
+        epochs = []  # Use epochs instead of batches for x-axis
 
         num_batches = len(X) // self.batch_size    # floor division
         for epoch in range(self.max_epoch):
-            losses, batches = [], []
-
             for batch_idx in range(num_batches):
                 start_idx = batch_idx * self.batch_size
                 end_idx = (batch_idx + 1) * self.batch_size
 
                 X_batch = torch.FloatTensor(np.array(X[start_idx:end_idx]))
                 y_batch = torch.LongTensor(np.array(y[start_idx:end_idx]))
-
-                # print("X batch shape: ", X_batch.shape)
-                # print("y_batch shape: ", y_batch.shape)
 
                 y_pred = self.forward(X_batch)
                 print("loss", y_pred.shape, y_batch.shape)
@@ -93,20 +88,19 @@ class Method_ORL(method, nn.Module):
                 optimizer.step()
 
                 accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred.max(1)[1]}
-                accuracy = accuracy_evaluator.evaluate(40, is_orl_dataset=True)  # make sure to change arg for other two datasets
+                accuracy = accuracy_evaluator.evaluate(40, is_orl_dataset=True)
                 current_loss = train_loss.item()
                 losses.append(current_loss)
-                batches.append(batch_idx)
+                epochs.append(epoch + batch_idx / num_batches)
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
 
-            plt.plot(batches, losses, label='Training Loss')
-            plt.xlabel('Number of batches')
-            plt.ylabel('Cross Entropy Loss')
-            plt.title('Training Convergence Plot')
-            plt.legend()
-            plt.savefig(f"./result/stage_3_result/orl_plot{epoch}.png")
-
-            plt.show()
+        plt.plot(epochs, losses, label='Training Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Cross Entropy Loss')
+        plt.title('Training Convergence Plot')
+        plt.legend()
+        plt.savefig(f"./result/stage_3_result/orl_plot.png")
+        plt.show()
 
     def test(self, X):
         X_tensor = torch.FloatTensor(np.array(X))
