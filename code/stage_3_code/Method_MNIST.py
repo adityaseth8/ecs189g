@@ -48,8 +48,6 @@ class Method_MNIST(method, nn.Module):
 
         num_batches = len(X) // self.batch_size    # floor division
         for epoch in range(self.max_epoch):
-            losses, batches = [], []
-
             for batch_idx in range(num_batches):
                 start_idx = batch_idx * self.batch_size
                 end_idx = (batch_idx + 1) * self.batch_size
@@ -83,7 +81,7 @@ class Method_MNIST(method, nn.Module):
 
     def test(self, X):
         X_tensor = torch.FloatTensor(np.array(X))
-        X_tensor = X_tensor.view(-1, 1, 28, 28)     # <---
+        X_tensor = X_tensor.view(-1, 1, 28, 28)
         y_pred = self.forward(X_tensor)
         return y_pred.max(1)[1]
 
