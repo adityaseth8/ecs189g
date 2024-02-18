@@ -44,7 +44,7 @@ class Method_MNIST(method, nn.Module):
         loss_function = nn.CrossEntropyLoss()
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
-        batches = []
+        epochs = []  # Use epochs instead of batches for x-axis
 
         num_batches = len(X) // self.batch_size    # floor division
         for epoch in range(self.max_epoch):
@@ -70,17 +70,16 @@ class Method_MNIST(method, nn.Module):
                 accuracy = accuracy_evaluator.evaluate(10, is_orl_dataset=False)  # make sure to change arg for other two datasets
                 current_loss = train_loss.item()
                 losses.append(current_loss)
-                batches.append(batch_idx)
+                epochs.append(epoch + batch_idx / num_batches)
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
 
-            plt.plot(batches, losses, label='Training Loss')
-            plt.xlabel('Number of batches')
-            plt.ylabel('Cross Entropy Loss')
-            plt.title('Training Convergence Plot')
-            plt.legend()
-            plt.savefig(f"./result/stage_3_result/plot{epoch}.png")
-
-            plt.show()
+        plt.plot(epochs, losses, label='Training Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Cross Entropy Loss')
+        plt.title('Training Convergence Plot')
+        plt.legend()
+        plt.savefig(f"./result/stage_3_result/mnist_plot.png")
+        plt.show()
 
     def test(self, X):
         X_tensor = torch.FloatTensor(np.array(X))
