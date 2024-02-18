@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 class Method_CIFAR(method, nn.Module):
     data = None
-    max_epoch = 10
+    max_epoch = 50
     learning_rate = 1e-3
     batch_size = 256
 
@@ -22,28 +22,28 @@ class Method_CIFAR(method, nn.Module):
 
         self.network = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.MaxPool2d(2, 2),  # output: 64 x 16 x 16
             nn.Dropout(0.1),
 
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.MaxPool2d(2, 2),  # output: 128 x 8 x 8
             nn.Dropout(0.1),
 
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.MaxPool2d(2, 2),  # output: 256 x 4 x 4
             nn.Dropout(0.1),
 
             nn.Flatten(),
             nn.Linear(256 * 4 * 4, 1024),
             nn.Dropout(0.2),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(1024, 512),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.Linear(512, 10))
 
         self.network.to(self.device)
@@ -88,7 +88,7 @@ class Method_CIFAR(method, nn.Module):
         plt.ylabel('Cross Entropy Loss')
         plt.title('Training Convergence Plot')
         plt.legend()
-        plt.savefig(f"../../result/stage_3_result/cifar_plot.png")
+        plt.savefig(f"./result/stage_3_result/cifar_plot.png")
         plt.show()
 
     def test(self, X):
