@@ -10,9 +10,9 @@ import torch.nn.functional as F
 
 class Method_CIFAR(method, nn.Module):
     data = None
-    max_epoch = 1
+    max_epoch = 10
     learning_rate = 1e-3
-    batch_size = 64
+    batch_size = 256
 
     def __init__(self, mName, mDescription, in_channels=3, num_classes=10):
         method.__init__(self, mName, mDescription)
@@ -22,25 +22,28 @@ class Method_CIFAR(method, nn.Module):
 
         self.network = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.MaxPool2d(2, 2),  # output: 64 x 16 x 16
+            nn.Dropout(0.1),
 
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1), nn.ReLU(),
-            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.Tanh(),
             nn.MaxPool2d(2, 2),  # output: 128 x 8 x 8
+            nn.Dropout(0.1),
 
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.MaxPool2d(2, 2),  # output: 256 x 4 x 4
+            nn.Dropout(0.1),
 
             nn.Flatten(),
             nn.Linear(256 * 4 * 4, 1024),
-            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Tanh(),
             nn.Linear(1024, 512),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(512, 10))
 
         self.network.to(self.device)
@@ -49,15 +52,14 @@ class Method_CIFAR(method, nn.Module):
         return self.network(x)
 
     def train(self, X, y):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-5)
         loss_function = nn.CrossEntropyLoss()
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
-        batches = []
+        epochs = []  # Use epochs instead of batches for x-axis
 
         num_batches = len(X) // self.batch_size  # floor division
         for epoch in range(self.max_epoch):
-            losses, batches = [], []
             for batch_idx in range(num_batches):
                 start_idx = batch_idx * self.batch_size
                 end_idx = (batch_idx + 1) * self.batch_size
@@ -75,18 +77,18 @@ class Method_CIFAR(method, nn.Module):
                 optimizer.step()
 
                 accuracy_evaluator.data = {'true_y': y_batch.cpu(), 'pred_y': y_pred.cpu().max(1)[1]}
-                accuracy = accuracy_evaluator.evaluate(10, is_orl_dataset=False)  # make sure to change arg for other two datasets
+                accuracy = accuracy_evaluator.evaluate(10)  # make sure to change arg for other two datasets
                 current_loss = train_loss.item()
                 losses.append(current_loss)
-                batches.append(batch_idx)
+                epochs.append(epoch + batch_idx / num_batches)  # Calculate epoch index for each batch
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
 
-        plt.plot(batches, losses, label='Training Loss')
-        plt.xlabel('Number of batches')
+        plt.plot(epochs, losses, label='Training Loss')
+        plt.xlabel('Epoch')
         plt.ylabel('Cross Entropy Loss')
         plt.title('Training Convergence Plot')
         plt.legend()
-        plt.savefig(f"./result/stage_3_result/cifar_plot.png")
+        plt.savefig(f"../../result/stage_3_result/cifar_plot.png")
         plt.show()
 
     def test(self, X):
@@ -122,6 +124,6 @@ class Method_CIFAR(method, nn.Module):
         accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
         accuracy_evaluator.data = {'true_y': y_test, 'pred_y': pred_y}
         print('--start evaluation...')
-        print(accuracy_evaluator.evaluate(10, is_orl_dataset=False))
+        print(accuracy_evaluator.evaluate(10))
 
         return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
