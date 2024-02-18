@@ -27,4 +27,4 @@ Install the following packages with pip if you do not have them already.
 ## Stage 3 Terminal Shortcuts
    - MNIST: `python -m script.stage_3_script.script_mnist`
    - CIFAR-10: `python -m script.stage_3_script.script_cifar`
-     - ORL: `python -m script.stage_3_script.script_orl`
+   - ORL: `python -m script.stage_3_script.script_orl`
