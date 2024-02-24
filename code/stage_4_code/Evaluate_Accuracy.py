@@ -14,7 +14,7 @@ class Evaluate_Accuracy(evaluate):
     data = None
     
     def evaluate(self):
-        labels = [i for i in range(10)]
+        labels = [i for i in range(2)]
 
         print('evaluating performance...')
 
