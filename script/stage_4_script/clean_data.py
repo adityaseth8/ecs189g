@@ -37,9 +37,9 @@ def create_csv(directory):
             
             # append new row to data frame
             if sentiment == "pos":
-                new_row = {'Tokens': stemmed, 'Sentiment': 1}
+                new_row = {'Tokens': stemmed, 'Sentiment': 1}   # positive sentiment denoted as 1
             else:
-                new_row = {'Tokens': stemmed, 'Sentiment': -1}
+                new_row = {'Tokens': stemmed, 'Sentiment': 0}   # negative sentiment denoted as 0
 
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
