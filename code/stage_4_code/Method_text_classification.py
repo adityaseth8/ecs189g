@@ -1,5 +1,6 @@
 from code.base_class.method import method
 from code.stage_4_code.Evaluate_Accuracy import Evaluate_Accuracy
+from torch.nn.utils.rnn import pad_sequence
 import torchtext
 glove = torchtext.vocab.GloVe(name="6B", dim=50)
 import torch
@@ -24,10 +25,6 @@ class Method_text_classification(method, nn.Module):
         self.fc = nn.Linear(self.hidden_size, num_classes)
 
     def forward(self, x):
-        # Look up the embedding
-        x = self.emb(x)
-        x.shape
-        exit()
         # Forward propagate the RNN
         out, _ = self.rnn(x)
         # Pass the output of the last time step to the classifier
@@ -38,8 +35,6 @@ class Method_text_classification(method, nn.Module):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
         loss_function = nn.CrossEntropyLoss()
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
-        # losses = []
-        # epochs = []  # Use epochs instead of batches for x-axis
 
         num_batches = len(X) // self.batch_size    # floor division
         for epoch in range(self.max_epoch):
@@ -47,9 +42,34 @@ class Method_text_classification(method, nn.Module):
                 start_idx = batch_idx * self.batch_size
                 end_idx = (batch_idx + 1) * self.batch_size
 
-                X_batch = torch.tensor(np.array(X[start_idx:end_idx]))
-                y_batch = torch.tensor(np.array(y[start_idx:end_idx]).flatten())
+                X_batch = X[start_idx:end_idx] # numpy arr, strings of tokens
+                y_batch = y[start_idx:end_idx] 
+                              
+                # get rid of empty tokens
+                # X_batch = [list(filter(None, seq)) for seq in X_batch]
+                
+                # X_batch_indices = [[glove.stoi[word] for word in seq] for seq in X_batch]  # throws key error, empty string index invalid
+                
+                # Convert tokens to numerical indices
+                X_batch_indices = [
+                    [glove.stoi[word] for word in seq if word in glove.stoi]
+                    for seq in X_batch
+                ]   
 
+                # add padding to batch
+                X_batch_padded = pad_sequence([torch.tensor(seq) for seq in X_batch_indices], batch_first=True, padding_value=0)
+
+                # Look up embedding (i think index --> vector of floats?)
+                X_batch = self.emb(X_batch_padded)
+                
+                print(X_batch.shape)
+                exit()
+
+                y_pred = self.forward(X_batch)
+            
+                # X_batch = torch.tensor(np.array(X[start_idx:end_idx]))
+                # y_batch = torch.tensor(np.array(y[start_idx:end_idx]).flatten())
+                
                 # print(X_batch.shape)
                 y_pred = self.forward(X_batch)
                 train_loss = loss_function(y_pred, y_batch)
