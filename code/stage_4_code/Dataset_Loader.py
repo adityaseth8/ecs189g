@@ -24,10 +24,13 @@ class Dataset_Loader(dataset):
         y = []  # sentiment
         df = pd.read_csv(self.dataset_source_folder_path + file_name)
         df = df.sample(frac = 1) # shuffle the data
-        X.append(df["Tokens"])
-        y.append(df["Sentiment"])
-        print(f"Number of unique in X {file_name} ", np.unique(X))
-        print(f"Number of unique in y {file_name} ", np.unique(y))
+
+        for i, row in df.iterrows():
+            X.append(row["Tokens"])
+            y.append(row["Sentiment"])
+        
+        X = np.array(X)
+        y = np.array(y)
         return X, y
 
     def load(self):
@@ -35,3 +38,12 @@ class Dataset_Loader(dataset):
         train_features, train_labels = self.parse(self.dataset_train_file_name)
         test_features, test_labels = self.parse(self.dataset_test_file_name)
         return {'X_train': train_features, 'y_train': train_labels, 'X_test': test_features, 'y_test': test_labels}
+
+#           Data Format
+# X = [
+#       [   ["tokens per review"]  , int ],
+#       [   ["tokens per review"]  , int ],
+#       [   ["tokens per review"]  , int ],
+#       [   ["tokens per review"]  , int ],
+# ]
+# len(X) = 25000
