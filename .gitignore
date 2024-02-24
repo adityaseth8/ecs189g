@@ -1,6 +1,8 @@
 #.gitignore
 ./data/*.csv
 *.pyc
-data/*
+data/stage_1_data
+data/stage_2_data
+data/stage_3_data
 result/stage_2_result/*
 
