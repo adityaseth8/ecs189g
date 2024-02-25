@@ -1,6 +1,7 @@
 from code.base_class.method import method
 from code.stage_4_code.Evaluate_Accuracy import Evaluate_Accuracy
 from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchtext
 glove = torchtext.vocab.GloVe(name="6B", dim=50)
@@ -10,20 +11,20 @@ import numpy as np
 
 
 class Method_text_classification(method, nn.Module):
+    # If available, use the first GPU
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
     max_epoch = 1
     learning_rate = 1e-3
     batch_size = 100
     input_size = 50     # must be 50 because of the input dim
-    hidden_size = 10    
+    hidden_size = 10
     def __init__(self, mName, mDescription, num_classes=2):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
-
-        self.emb = nn.Embedding.from_pretrained(glove.vectors)
-
-        # self.hidden_size = hidden_size
-        self.rnn = nn.RNN(self.input_size, self.hidden_size, batch_first=True)
-        self.fc = nn.Linear(self.hidden_size, num_classes)
+        self.emb = nn.Embedding.from_pretrained(glove.vectors).to(self.device)
+        self.rnn = nn.RNN(self.input_size, self.hidden_size, batch_first=True).to(self.device)
+        self.fc = nn.Linear(self.hidden_size, num_classes).to(self.device)
 
     def forward(self, x):
         # Forward propagate the RNN
@@ -34,7 +35,7 @@ class Method_text_classification(method, nn.Module):
 
     def train(self, X, y):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        loss_function = nn.CrossEntropyLoss()
+        loss_function = nn.CrossEntropyLoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
@@ -66,19 +67,7 @@ class Method_text_classification(method, nn.Module):
                 # Look up embedding (i think index --> vector of floats?)
                 X_batch = self.emb(X_batch_padded)
                 
-                # print(X_batch.shape)
-                # print(y_batch.shape)
-                # print(y_batch.dtype)
-                # print(y_batch)
-
-                # y_pred = self.forward(X_batch)
-            
-                # X_batch = torch.tensor(np.array(X[start_idx:end_idx]))
-                # y_batch = torch.tensor(np.array(y[start_idx:end_idx]).flatten())
-                
-                # print(X_batch.shape)
                 y_pred = self.forward(X_batch)
-                # print(y_pred.dtype)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
@@ -98,6 +87,28 @@ class Method_text_classification(method, nn.Module):
         plt.legend()
         plt.savefig(f"./result/stage_4_result/train_text_classification.png")
         plt.show()
+        
+    def test(self, X):
+        dataset = X
+        loader = DataLoader(dataset, batch_size=100)
+        
+        all_pred_y = []
+        with torch.no_grad():
+            for data in loader:
+                X_batch = data      # Not able to put this data to GPU b/c value error of string
+                
+                  # Extract text sequences from the batch
+                X_batch_indices = [
+                    [glove.stoi[word] for word in seq if word in glove.stoi]
+                    for seq in X_batch
+                ]
+                X_batch_padded = pad_sequence([torch.tensor(seq) for seq in X_batch_indices], batch_first=True, padding_value=0).to(self.device)
+                X_batch = self.emb(X_batch_padded)
+                y_pred_batch = self.forward(X_batch)
+                pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
+                all_pred_y.extend(pred_y)
+
+        return torch.tensor(all_pred_y)  # Combine predictions from all batches
 
     def run(self):
         print('method running...')
@@ -105,13 +116,9 @@ class Method_text_classification(method, nn.Module):
         self.train(self.data['train']['X'], self.data['train']['y'])
         print('--start testing...')
         
-        # MAKE SURE TO CHANGE BEFORE TESTING!!!
-        # raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
-        # AttributeError: 'Method_text_classification' object has no attribute 'test'
-        
-        # pred_y = self.test(self.data['test']['X'])
-        # accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
-        # accuracy_evaluator.data = {'true_y': self.data['test']['y'], 'pred_y': pred_y}
-        # print(accuracy_evaluator.evaluate())
+        pred_y = self.test(self.data['test']['X'])
+        accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
+        accuracy_evaluator.data = {'true_y': self.data['test']['y'], 'pred_y': pred_y}
+        accuracy_evaluator.evaluate()
 
-        # return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
+        return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
