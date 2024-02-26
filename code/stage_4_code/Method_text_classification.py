@@ -15,12 +15,12 @@ class Method_text_classification(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
-    max_epoch = 10
+    max_epoch = 1
     learning_rate = 1e-3
     batch_size = 64
     input_size = 100     # must be the same as the glove dim
-    hidden_size = 16
-    num_layers = 2
+    hidden_size = 8
+    num_layers = 1
     def __init__(self, mName, mDescription, num_classes=2):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
@@ -148,17 +148,44 @@ class Method_text_classification(method, nn.Module):
         with torch.no_grad():
             for data in loader:
                 X_batch = data      # Not able to put this data to GPU b/c value error of string
+            
+                X_batch_indices = []
+                # Length of seq is the length of one review in X batch
+                max_seq_length = max(len(seq) for seq in X_batch)
+                for seq in X_batch:
+                    seq_indices = []
+                    for word in seq:
+                        if word in glove.stoi:
+                            seq_indices.append(glove.stoi[word])
+                        else:
+                            # Handle out-of-vocabulary words by assigning them a special index
+                            seq_indices.append(np.random.randint(0, len(glove.stoi)))
+
+                    # Pad the sequence to the maximum length within the batch
+                    seq_indices += [np.random.randint(0, len(glove.stoi))] * (max_seq_length - len(seq_indices))
+                    X_batch_indices.append(seq_indices)
+
+                # Convert list of indices to tensor and move it to the device
+                X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
+
+                # Look up embeddings
+                X_batch = self.emb(X_batch_indices)
                 
-                  # Extract text sequences from the batch
-                X_batch_indices = [
-                    [glove.stoi[word] for word in seq if word in glove.stoi]
-                    for seq in X_batch
-                ]
-                X_batch_padded = pad_sequence([torch.tensor(seq) for seq in X_batch_indices], batch_first=True, padding_value=0).to(self.device)
-                X_batch = self.emb(X_batch_padded)
                 y_pred_batch = self.forward(X_batch)
                 pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
                 all_pred_y.extend(pred_y)
+                
+                # Previous
+                # Extract text sequences from the batch
+                # X_batch_indices = [
+                #     [glove.stoi[word] for word in seq if word in glove.stoi]
+                #     for seq in X_batch
+                # ]
+                # X_batch_padded = pad_sequence([torch.tensor(seq) for seq in X_batch_indices], batch_first=True, padding_value=0).to(self.device)
+                # X_batch = self.emb(X_batch_padded)
+                # y_pred_batch = self.forward(X_batch)
+                # pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
+                # all_pred_y.extend(pred_y)
 
         return torch.tensor(all_pred_y)  # Combine predictions from all batches
 
