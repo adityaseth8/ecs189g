@@ -26,7 +26,7 @@ def create_csv(directory):
             words = [word for word in tokens if word.isalpha()]
             
             # remove stop words
-            stop_words = set(stopwords.words('english'))
+            stop_words = set(stopwords.words('engiglish'))
             words = [w for w in words if not w in stop_words]
 
             # get stem words
