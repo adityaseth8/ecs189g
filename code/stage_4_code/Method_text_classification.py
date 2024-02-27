@@ -15,12 +15,12 @@ class Method_text_classification(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
-    max_epoch = 2
+    max_epoch = 1
     learning_rate = 1e-3
     batch_size = 125    # must be a factor of 25000 because of integer division
     embed_dim = 100     # must be the same as the glove dim
-    hidden_size = 4
-    num_layers = 1
+    hidden_size = 8
+    num_layers = 2
     L = 151 # 75th percentile of length of reviews = 151
     def __init__(self, mName, mDescription, num_classes=2):
         method.__init__(self, mName, mDescription)
@@ -36,15 +36,26 @@ class Method_text_classification(method, nn.Module):
         # Hidden shape: 151, 125, 
         # Output shape: 125, 151, 4
         
-        # Forward propagate the RNN
-        out, _ = self.rnn(x)
-        # out, _ = self.rnn2(x)
+        # # Forward propagate the RNN
+        # out, _ = self.rnn(x)
+        # # out, _ = self.rnn2(x)
 
-        # Pass the output of the last time step to the classifier
-        out = self.fc(out[:, -1, :])
-        out = self.act(out)
+        # # Pass the output of the last time step to the classifier
+        # out = self.fc(out[:, -1, :])
+        # out = self.act(out)
 
-        return out
+        # return out
+        
+        output, (hidden, cell) = self.rnn(x)
+        # output dim: [sentence length, batch size, hidden dim]
+        # hidden dim: [1, batch size, hidden dim]
+
+        hidden.squeeze_(0)
+        # hidden dim: [batch size, hidden dim]
+        
+        output = self.fc(hidden)
+        output = self.act(hidden)
+        return output
 
     def train(self, X, y):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -87,6 +98,32 @@ class Method_text_classification(method, nn.Module):
                 X_batch = self.emb(X_batch_indices)
                 
                 y_pred = self.forward(X_batch)
+                
+                # Add an extra dimension if the hidden size is one
+                # Check if the hidden size is one
+                print(y_pred.shape)
+                if y_pred.dim() == 2:
+                    y_pred = torch.unsqueeze(y_pred, dim=0)  # Add an extra dimension at the beginning
+                print(y_pred.shape)
+
+                # Remove the excess padding in the first dimension before putting into loss function
+                # Ensures y_pred has the same dimensions as y_batch
+                # print(y_pred.shape)
+                # exit()
+                
+                # FIX FOR NUM LAYERS = 1 AND NUM LAYERS > 1
+                y_pred = torch.narrow(y_pred, 1, 0, self.batch_size)
+                print(y_pred.shape)
+                
+                # y_pred = torch.reshape(y_pred, (self.batch_size, self.hidden_size))
+                # print(y_pred.shape)
+                
+                
+                
+                    
+                # print(y_pred.shape)
+                # exit()
+                
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
@@ -142,6 +179,14 @@ class Method_text_classification(method, nn.Module):
             X_batch = self.emb(X_batch_indices)
             
             y_pred_batch = self.forward(X_batch)
+            
+            # Add an extra dimension if the hidden size is one
+            y_pred_batch = y_pred_batch.unsqueeze(0) if y_pred_batch.dim() == 2 else y_pred_batch
+            
+            # Remove the excess padding in the first dimension before putting into loss function
+            # Ensures y_pred has the same dimensions as y_batch
+            y_pred_batch = torch.narrow(y_pred_batch, 1, 0, self.batch_size)
+            
             pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
             all_pred_y.extend(pred_y)
 
