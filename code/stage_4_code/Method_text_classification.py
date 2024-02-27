@@ -15,11 +15,11 @@ class Method_text_classification(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
-    max_epoch = 2
+    max_epoch = 10
     learning_rate = 1e-3
     batch_size = 125    # must be a factor of 25000 because of integer division
     embed_dim = 100     # must be the same as the glove dim
-    hidden_size = 4
+    hidden_size = 3
     num_layers = 1
     L = 151 # 75th percentile of length of reviews = 151
     def __init__(self, mName, mDescription, num_classes=2):
@@ -35,12 +35,12 @@ class Method_text_classification(method, nn.Module):
         # See if we need to use the hidden state? -> was giving an error with y_batch and y_pred shapes in loss function
         # Hidden shape: 151, 125, 
         # Output shape: 125, 151, 4
-        
+        x = self.emb(x)
         # Forward propagate the RNN
         out, (hidden, _) = self.rnn(x)
-        print(hidden.shape)
+        # print(hidden.shape)
         hidden = hidden[-1, :, :]
-        print(hidden.shape)
+        # print(hidden.shape)
 
         # Pass the output of the last time step to the classifier
         out = self.fc(hidden)
@@ -86,11 +86,10 @@ class Method_text_classification(method, nn.Module):
                 X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
 
                 # Look up embeddings
-                X_batch = self.emb(X_batch_indices)
                 
-                y_pred = self.forward(X_batch)
-                print("y pred", y_pred.shape)
-                print("y_batch", y_batch.shape)
+                y_pred = self.forward(X_batch_indices)
+                # print("y pred", y_pred.shape)
+                # print("y_batch", y_batch.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
@@ -143,9 +142,9 @@ class Method_text_classification(method, nn.Module):
             X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
 
             # Look up embeddings
-            X_batch = self.emb(X_batch_indices)
+            # X_batch = self.emb(X_batch_indices)
             
-            y_pred_batch = self.forward(X_batch)
+            y_pred_batch = self.forward(X_batch_indices)
             pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
             all_pred_y.extend(pred_y)
 
