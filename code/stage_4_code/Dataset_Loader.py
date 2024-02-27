@@ -8,6 +8,7 @@ Concrete IO class for a specific dataset
 from code.base_class.dataset import dataset
 import numpy as np
 import pandas as pd
+import ast
 
 
 class Dataset_Loader(dataset):
@@ -26,10 +27,17 @@ class Dataset_Loader(dataset):
         df = df.sample(frac = 1) # shuffle the data
 
         for i, row in df.iterrows():
-            X.append(row["Tokens"])
+            # row = list(row[])
+            a_list = ast.literal_eval(row["Tokens"])
+            # print(len(a_list))
+            X.append(a_list)
+            # print(X)
+            # print("`````````````````````````")
+            # print(X[0][0])
+            # exit(0)
             y.append(row["Sentiment"])
         
-        X = np.array(X)
+        # X = np.array(X)
         y = np.array(y)
         return X, y
 
