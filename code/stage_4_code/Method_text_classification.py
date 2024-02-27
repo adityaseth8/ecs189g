@@ -26,7 +26,7 @@ class Method_text_classification(method, nn.Module):
         nn.Module.__init__(self)
         self.emb = nn.Embedding(num_embeddings=len(glove.stoi), 
                                 embedding_dim=glove.vectors.size(1)).to(self.device)
-        self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers).to(self.device)
+        self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
         self.fc = nn.Linear(self.hidden_size, num_classes).to(self.device)
         self.act = nn.ReLU().to(self.device)
 
@@ -36,11 +36,13 @@ class Method_text_classification(method, nn.Module):
         # Output shape: 125, 151, 4
         
         # Forward propagate the RNN
-        out, _ = self.rnn(x)
-        # out, _ = self.rnn2(x)
+        out, (hidden, _) = self.rnn(x)
+        print(hidden.shape)
+        hidden = hidden[-1, :, :]
+        print(hidden.shape)
 
         # Pass the output of the last time step to the classifier
-        out = self.fc(out[:, -1, :])
+        out = self.fc(hidden)
         out = self.act(out)
         return out
 
@@ -85,6 +87,8 @@ class Method_text_classification(method, nn.Module):
                 X_batch = self.emb(X_batch_indices)
                 
                 y_pred = self.forward(X_batch)
+                print("y pred", y_pred.shape)
+                print("y_batch", y_batch.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
