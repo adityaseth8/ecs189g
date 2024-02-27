@@ -5,6 +5,8 @@ from nltk.stem.porter import PorterStemmer
 import os
 import pandas as pd
 
+# nltk.download("punkt")
+
 nltk.download('stopwords', quiet=True)
 
 def clean_string(string):
