@@ -15,7 +15,7 @@ class Method_text_classification(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
-    max_epoch = 10
+    max_epoch = 2
     learning_rate = 1e-3
     batch_size = 125    # must be a factor of 25000 because of integer division
     embed_dim = 100     # must be the same as the glove dim
@@ -37,18 +37,13 @@ class Method_text_classification(method, nn.Module):
         # Output shape: 125, 151, 4
         
         # Forward propagate the RNN
-        # out, _ = self.rnn(x)
-        # # out, _ = self.rnn2(x)
-
-        # # Pass the output of the last time step to the classifier
-        # out = self.fc(out[:, -1, :])
         out, (hidden, _) = self.rnn(x)
         print(hidden.shape)
         hidden = hidden[-1, :, :]
         print(hidden.shape)
 
+        # Pass the output of the last time step to the classifier
         out = self.fc(hidden)
-        print(out.shape)
         out = self.act(out)
 
         return out
@@ -95,7 +90,7 @@ class Method_text_classification(method, nn.Module):
                 
                 y_pred = self.forward(X_batch)
                 print("y pred", y_pred.shape)
-                print("y batch", y_batch.shape)
+                print("y_batch", y_batch.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
