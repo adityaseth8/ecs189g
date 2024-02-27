@@ -15,13 +15,13 @@ class Method_text_classification(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
-    max_epoch = 3
+    max_epoch = 2
     learning_rate = 1e-3
     batch_size = 125    # must be a factor of 25000 because of integer division
     embed_dim = 100     # must be the same as the glove dim
     hidden_size = 4
     num_layers = 1
-    L = 125 # 75th percentile of length of reviews = 151
+    L = 151 # 75th percentile of length of reviews = 151
     def __init__(self, mName, mDescription, num_classes=2):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
@@ -32,25 +32,19 @@ class Method_text_classification(method, nn.Module):
         self.act = nn.ReLU().to(self.device)
 
     def forward(self, x):
-        # # Forward propagate the RNN
-        # out, _ = self.rnn1(x)
-        # # out, _ = self.rnn2(x)
-
-        # # Pass the output of the last time step to the classifier
-        # out = self.fc(out[:, -1, :])
-        # out = self.act(out)
-
-        output, (hidden, cell) = self.rnn(x)
-        # output dim: [sentence length, batch size, hidden dim]
-        # hidden dim: [1, batch size, hidden dim]
-
-        hidden = hidden.squeeze_(0)
-        # hidden dim: [batch size, hidden dim]
+        # See if we need to use the hidden state? -> was giving an error with y_batch and y_pred shapes in loss function
+        # Hidden shape: 151, 125, 
+        # Output shape: 125, 151, 4
         
-        output = self.fc(hidden)
-        output = self.act(hidden)
-        return output
-        # return out
+        # Forward propagate the RNN
+        out, _ = self.rnn(x)
+        # out, _ = self.rnn2(x)
+
+        # Pass the output of the last time step to the classifier
+        out = self.fc(out[:, -1, :])
+        out = self.act(out)
+
+        return out
 
     def train(self, X, y):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -117,46 +111,39 @@ class Method_text_classification(method, nn.Module):
         num_batches = len(X) // self.batch_size    # floor division
         all_pred_y = []
 
-        for epoch in range(self.max_epoch):
-            for batch_idx in range(num_batches):
-                start_idx = batch_idx * self.batch_size
-                end_idx = (batch_idx + 1) * self.batch_size
+        for batch_idx in range(num_batches):
+            start_idx = batch_idx * self.batch_size
+            end_idx = (batch_idx + 1) * self.batch_size
 
-                X_batch = X[start_idx:end_idx] # numpy arr, strings of tokens
-                X_batch_indices = []
-                for seq in X_batch:
-                    seq_indices = []
-                    if len(seq) > self.L:
-                        # truncate, too long
-                        seqArr = seq[:self.L]
+            X_batch = X[start_idx:end_idx] # numpy arr, strings of tokens
+            X_batch_indices = []
+            for seq in X_batch:
+                seq_indices = []
+                if len(seq) > self.L:
+                    # truncate, too long
+                    seqArr = seq[:self.L]
+                else:
+                    seqArr = seq
+
+                for word in seqArr:
+                    if word in glove.stoi:
+                        seq_indices.append(glove.stoi[word])
                     else:
-                        seqArr = seq
-
-                    for word in seqArr:
-                        if word in glove.stoi:
-                            seq_indices.append(glove.stoi[word])
-                        else:
-                            seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
-                    
-                    # Pad the sequence to the maximum length within the batch
-                    seq_indices += [np.random.randint(0, len(glove.stoi))] * (self.L - len(seq_indices))
-                    print("len of sequence indices: ", len(seq_indices))
-                    X_batch_indices.append(seq_indices)
-
-                # Convert list of indices to tensor and move it to the device
-                X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
-
-                # Look up embeddings
-                X_batch = self.emb(X_batch_indices)
+                        seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
                 
-                y_pred_batch = self.forward(X_batch)
-                pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
-                all_pred_y.extend(pred_y)
-    
-            print("per epoch length of pred y", len(all_pred_y))
-            print("`````````")
+                # Pad the sequence to the maximum length within the batch
+                seq_indices += [np.random.randint(0, len(glove.stoi))] * (self.L - len(seq_indices))
+                X_batch_indices.append(seq_indices)
 
-        print(len(all_pred_y))
+            # Convert list of indices to tensor and move it to the device
+            X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
+
+            # Look up embeddings
+            X_batch = self.emb(X_batch_indices)
+            
+            y_pred_batch = self.forward(X_batch)
+            pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
+            all_pred_y.extend(pred_y)
 
         return torch.tensor(all_pred_y)  # Combine predictions from all batches
 
