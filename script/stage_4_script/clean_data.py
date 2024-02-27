@@ -7,6 +7,24 @@ import pandas as pd
 
 nltk.download('stopwords', quiet=True)
 
+def clean_string(string):
+    cleanStr = ''
+
+    for char in string:
+        if char.isalpha():
+            cleanStr += char
+
+    return cleanStr
+
+def remove_empty_string(tokens):
+    words = []
+    for word in tokens:
+        clean = clean_string(word)
+        if clean != '':
+            words.append(clean)
+            
+    return words
+
 def create_csv(directory):
     df = pd.DataFrame(columns=["Tokens", "Sentiment"])
     
@@ -23,7 +41,7 @@ def create_csv(directory):
             # tokenize
             tokens = word_tokenize(input)
             tokens = [w.lower() for w in tokens]
-            words = [word for word in tokens if word.isalpha()]
+            words = remove_empty_string(tokens)
             
             # remove stop words
             stop_words = set(stopwords.words('engiglish'))
