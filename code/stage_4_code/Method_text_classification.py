@@ -4,43 +4,73 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchtext
-glove = torchtext.vocab.GloVe(name="6B", dim=100)
+glove = torchtext.vocab.GloVe(name="6B", dim=300)
 import torch
 from torch import nn
 import numpy as np
-import random
-
+import os
 
 class Method_text_classification(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
-    max_epoch = 2
+    max_epoch = 50
     learning_rate = 1e-3
-    batch_size = 125    # must be a factor of 25000 because of integer division
-    embed_dim = 100     # must be the same as the glove dim
-    hidden_size = 4
-    num_layers = 1
+    batch_size = 200    # must be a factor of 25000 because of integer division
+    embed_dim = 300     # must be the same as the glove dim
+    hidden_size = 256
+    num_layers = 2
     L = 151 # 75th percentile of length of reviews = 151
+    GLOVE_FILE = os.path.join(".vector_cache", f"glove.6B.{embed_dim}d.txt")
+    average_word_embed = []
+
     def __init__(self, mName, mDescription, num_classes=2):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
+        
+        # Handling out of vocab words: 
+        # Source: https://stackoverflow.com/questions/49239941/what-is-unk-in-the-pretrained-glove-vector-files-e-g-glove-6b-50d-txt
+        # with open(self.GLOVE_FILE, 'r', encoding='utf-8') as f:
+        #     lines = f.readlines()
+
+        # n_vec = len(lines)
+        # hidden_dim = len(lines[0].split(' ')) - 1
+
+        # vecs = np.zeros((n_vec, hidden_dim), dtype=np.float32)
+
+        # for i, line in enumerate(lines):
+        #     vecs[i] = np.array([float(n) for n in line.split(' ')[1:]], dtype=np.float32)
+
+        # average_word_embed = np.mean(vecs, axis=0)
+        
+        # Read in average word embedding
+        with open("./data/stage_4_data/text_classification/average_word_embed.txt", "r") as f:
+            lines = f.readlines()
+            f.close()
+            for line in lines:
+                self.average_word_embed.append(np.float32(line))
+
+        # Create a new word in the vocab with the average word embedding
+        glove.stoi["unk_token"] = len(glove.stoi)
+        glove.itos.append("unk_token")
+        glove.vectors = np.vstack([glove.vectors, self.average_word_embed])  # Append the new embedding to the existing embeddings
+        
         self.emb = nn.Embedding(num_embeddings=len(glove.stoi), 
-                                embedding_dim=glove.vectors.size(1)).to(self.device)
+                        embedding_dim=glove.vectors.shape[1]).to(self.device)
+
         self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
+        self.dropout = nn.Dropout(0.4)
         self.fc = nn.Linear(self.hidden_size, num_classes).to(self.device)
-        self.act = nn.ReLU().to(self.device)
+        self.act = nn.Sigmoid().to(self.device)
 
     def forward(self, x):
-        # See if we need to use the hidden state? -> was giving an error with y_batch and y_pred shapes in loss function
-        # Hidden shape: 151, 125, 
-        # Output shape: 125, 151, 4
-        
         # Forward propagate the RNN
-        out, (hidden, _) = self.rnn(x)
-        print(hidden.shape)
+        # out, hidden = self.rnn(x)           # RNN or GRU
+        out, (hidden, _) = self.rnn(x)    # LSTM
+        # print(hidden.shape)
         hidden = hidden[-1, :, :]
-        print(hidden.shape)
+        hidden = self.dropout(hidden)
+        # print(hidden.shape)
 
         # Pass the output of the last time step to the classifier
         out = self.fc(hidden)
@@ -73,13 +103,14 @@ class Method_text_classification(method, nn.Module):
                         seqArr = seq
 
                     for word in seqArr:
-                        if word in glove.stoi:
+                        if word in glove.stoi:                      # Word is in vocab
                             seq_indices.append(glove.stoi[word])
-                        else:
-                            seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
+                        else: # Out of vocab words are excluded     # If word is not in vocab, append unknown token
+                            # seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
+                            seq_indices.append(glove.stoi["unk_token"])
                     
                     # Pad the sequence to the maximum length within the batch
-                    seq_indices += [np.random.randint(0, len(glove.stoi))] * (self.L - len(seq_indices))
+                    seq_indices += [glove.stoi["unk_token"]] * (self.L - len(seq_indices))
                     X_batch_indices.append(seq_indices)
 
                 # Convert list of indices to tensor and move it to the device
@@ -89,8 +120,8 @@ class Method_text_classification(method, nn.Module):
                 X_batch = self.emb(X_batch_indices)
                 
                 y_pred = self.forward(X_batch)
-                print("y pred", y_pred.shape)
-                print("y_batch", y_batch.shape)
+                # print("y pred", y_pred.shape)
+                # print("y_batch", y_batch.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
@@ -103,14 +134,19 @@ class Method_text_classification(method, nn.Module):
                 epochs.append(epoch + batch_idx / num_batches)
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
         
-        plt.plot(epochs, losses, label='Training Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Cross Entropy Loss')
-        plt.title('Training Convergence Plot')
-        plt.legend()
-        plt.savefig(f"./result/stage_4_result/train_text_classification.png")
-        # plt.show()
-        
+        # Every 10 epochs, print training plot and save model
+        if (epoch + 1) % 10 == 0:
+            plt.plot(epochs, losses, label='Training Loss')
+            plt.xlabel('Epoch')
+            plt.ylabel('Cross Entropy Loss')
+            plt.title('Training Convergence Plot')
+            plt.legend()
+            plt.savefig(f"./result/stage_4_result/train_text_classification.png")
+            # plt.show()
+            
+            # torch.save(self.state_dict(), f"./saved_models/text_classification_{epoch+1}.pt")
+            # print(f"Model saved at epoch {epoch+1}")
+            
     def test(self, X):
         num_batches = len(X) // self.batch_size    # floor division
         all_pred_y = []
@@ -130,15 +166,16 @@ class Method_text_classification(method, nn.Module):
                     seqArr = seq
 
                 for word in seqArr:
-                    if word in glove.stoi:
+                    if word in glove.stoi:                      # Word is in vocab
                         seq_indices.append(glove.stoi[word])
-                    else:
-                        seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
+                    else: # Out of vocab words are excluded     # If word is not in vocab, append unknown token
+                        # seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
+                        seq_indices.append(glove.stoi["unk_token"])
                 
                 # Pad the sequence to the maximum length within the batch
-                seq_indices += [np.random.randint(0, len(glove.stoi))] * (self.L - len(seq_indices))
+                seq_indices += [glove.stoi["unk_token"]] * (self.L - len(seq_indices))
                 X_batch_indices.append(seq_indices)
-
+                
             # Convert list of indices to tensor and move it to the device
             X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
 
