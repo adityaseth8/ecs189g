@@ -32,7 +32,7 @@ class Method_Generation(method, nn.Module):
         self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
         self.dropout = nn.Dropout(0.35)
         self.fc = nn.Linear(self.hidden_size, num_classes).to(self.device)
-        self.act = nn.ReLU().to(self.device)
+        # self.act = nn.ReLU().to(self.device)
 
 
     def forward(self, x):
@@ -40,12 +40,12 @@ class Method_Generation(method, nn.Module):
         out, (hidden, _) = self.rnn(x)
         hidden = hidden[-1, :, :]
 
-        hidden = self.dropout(hidden)
+        # hidden = self.dropout(hidden)
         out = self.fc(hidden)   
         return out
 
     def train(self, X, y):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.1)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0)
         loss_function = nn.MSELoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
@@ -60,12 +60,16 @@ class Method_Generation(method, nn.Module):
                 y_batch = torch.FloatTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
                 print("X_batch.shape", X_batch.shape)
 
+                print("x batch data type: ", X_batch.dtype)
                 y_pred = self.forward(X_batch)
-                # print(y_pred)
-                # print(y_batch)
+                print("y pred shape: ", y_pred.shape)
+                print("y batch shape: ", y_batch.shape)
+                print("y_pred: ", y_pred)
+                print("y_batch: ", y_batch)
+                # exit()
 
-                print("y_batch.shape", y_batch.shape)
-                print("y_pred.shape", y_pred.shape)
+                # print("y_batch.shape", y_batch.shape)
+                # print("y_pred.shape", y_pred.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
