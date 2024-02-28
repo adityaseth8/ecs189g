@@ -15,7 +15,7 @@ class Method_text_classification(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     max_epoch = 50
-    learning_rate = 1e-3
+    learning_rate = 2e-3
     batch_size = 200    # must be a factor of 25000 because of integer division
     embed_dim = 300     # must be the same as the glove dim
     hidden_size = 256
@@ -117,7 +117,6 @@ class Method_text_classification(method, nn.Module):
                 X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
 
                 # Look up embeddings
-                X_batch = self.emb(X_batch_indices)
                 
                 y_pred = self.forward(X_batch)
                 # print("y pred", y_pred.shape)
@@ -180,9 +179,9 @@ class Method_text_classification(method, nn.Module):
             X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
 
             # Look up embeddings
-            X_batch = self.emb(X_batch_indices)
+            # X_batch = self.emb(X_batch_indices)
             
-            y_pred_batch = self.forward(X_batch)
+            y_pred_batch = self.forward(X_batch_indices)
             pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
             all_pred_y.extend(pred_y)
 
