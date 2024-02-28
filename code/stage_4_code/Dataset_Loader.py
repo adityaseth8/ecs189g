@@ -20,6 +20,15 @@ class Dataset_Loader(dataset):
     def __init__(self, dName=None, dDescription=None):
         super().__init__(dName, dDescription)
 
+    def clean_string(string):
+        cleanStr = ''
+
+        for char in string:
+            if char.isalpha():
+                cleanStr += char
+
+        return cleanStr
+
     def parse(self, file_name):
         X = []  # tokens
         y = []  # sentiment
@@ -40,6 +49,27 @@ class Dataset_Loader(dataset):
         # X = np.array(X)
         y = np.array(y)
         return X, y
+    
+    def parse_jokes(self, file_name): ## NOT DONE YET
+
+        f = open(self.dataset_source_folder_path + file_name, 'r')
+        for line in f:
+            line = line.strip("\n")
+            joke = line.split(",", 1)[1]
+            
+            tokens = joke.split(" ")
+
+            # remove punctuation
+            tokens = [self.clean_string(t).lower() for t in tokens]
+            print(tokens)
+            
+            # sliding window
+        f.close()
+        
+        return 
+        
+
+
 
     def load(self):
         print('loading data...')
