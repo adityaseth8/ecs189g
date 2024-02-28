@@ -14,12 +14,13 @@ class Method_text_classification(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
-    max_epoch = 50
+    load_model = False
+    max_epoch = 1
     learning_rate = 2e-3
     batch_size = 200    # must be a factor of 25000 because of integer division
     embed_dim = 300     # must be the same as the glove dim
-    hidden_size = 256
-    num_layers = 2
+    hidden_size = 1
+    num_layers = 1
     L = 151 # 75th percentile of length of reviews = 151
     GLOVE_FILE = os.path.join(".vector_cache", f"glove.6B.{embed_dim}d.txt")
     average_word_embed = []
@@ -30,19 +31,6 @@ class Method_text_classification(method, nn.Module):
         
         # Handling out of vocab words: 
         # Source: https://stackoverflow.com/questions/49239941/what-is-unk-in-the-pretrained-glove-vector-files-e-g-glove-6b-50d-txt
-        # with open(self.GLOVE_FILE, 'r', encoding='utf-8') as f:
-        #     lines = f.readlines()
-
-        # n_vec = len(lines)
-        # hidden_dim = len(lines[0].split(' ')) - 1
-
-        # vecs = np.zeros((n_vec, hidden_dim), dtype=np.float32)
-
-        # for i, line in enumerate(lines):
-        #     vecs[i] = np.array([float(n) for n in line.split(' ')[1:]], dtype=np.float32)
-
-        # average_word_embed = np.mean(vecs, axis=0)
-        
         # Read in average word embedding
         with open("./data/stage_4_data/text_classification/average_word_embed.txt", "r") as f:
             lines = f.readlines()
@@ -59,9 +47,10 @@ class Method_text_classification(method, nn.Module):
                         embedding_dim=glove.vectors.shape[1]).to(self.device)
 
         self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
-        self.dropout = nn.Dropout(0.4)
+        self.dropout = nn.Dropout(0.35)
         self.fc = nn.Linear(self.hidden_size, num_classes).to(self.device)
         self.act = nn.Sigmoid().to(self.device)
+        print("done init model")
 
     def forward(self, x):
         # Forward propagate the RNN
@@ -92,7 +81,8 @@ class Method_text_classification(method, nn.Module):
                 end_idx = (batch_idx + 1) * self.batch_size
 
                 X_batch = X[start_idx:end_idx] # numpy arr, strings of tokens
-                y_batch = torch.LongTensor(y[start_idx:end_idx])    # to match data type as X batch
+                y_batch = torch.LongTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
+
                 X_batch_indices = []
                 for seq in X_batch:
                     seq_indices = []
@@ -120,6 +110,9 @@ class Method_text_classification(method, nn.Module):
                 X_batch = self.emb(X_batch_indices)
                 
                 y_pred = self.forward(X_batch)
+                # print(y_pred.dtype)
+                # print(y_batch.dtype)
+                # exit()
                 # print("y pred", y_pred.shape)
                 # print("y_batch", y_batch.shape)
                 train_loss = loss_function(y_pred, y_batch)
@@ -134,19 +127,31 @@ class Method_text_classification(method, nn.Module):
                 epochs.append(epoch + batch_idx / num_batches)
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
         
-        # Every 10 epochs, print training plot and save model
-        if (epoch + 1) % 10 == 0:
-            plt.plot(epochs, losses, label='Training Loss')
-            plt.xlabel('Epoch')
-            plt.ylabel('Cross Entropy Loss')
-            plt.title('Training Convergence Plot')
-            plt.legend()
-            plt.savefig(f"./result/stage_4_result/train_text_classification.png")
-            # plt.show()
+            # Every 5 epochs, print training plot and save model
+            if (epoch + 1) % 5 == 0:
+                plt.plot(epochs, losses, label='Training Loss')
+                plt.xlabel('Epoch')
+                plt.ylabel('Cross Entropy Loss')
+                plt.title('Training Convergence Plot')
+                # plt.legend()
+                plt.savefig(f"./result/stage_4_result/train_text_classification.png")
+                # plt.show()
+                
+                torch.save(self.state_dict(), f"./saved_models/text_classification_{epoch+1}.pt")
+                print(f"Model saved at epoch {epoch+1}")
             
-            # torch.save(self.state_dict(), f"./saved_models/text_classification_{epoch+1}.pt")
-            # print(f"Model saved at epoch {epoch+1}")
-            
+    def load_and_test(self, X):
+        model_path = "saved_models/text_classification_25.pt"
+        self.load_state_dict(torch.load(model_path))
+        print("loaded in model")
+        
+        # Set the model to evaluation mode
+        self.to(self.device)
+        
+        # Perform testing
+        with torch.no_grad():
+            return self.test(X)
+
     def test(self, X):
         num_batches = len(X) // self.batch_size    # floor division
         all_pred_y = []
@@ -182,7 +187,7 @@ class Method_text_classification(method, nn.Module):
             # Look up embeddings
             X_batch = self.emb(X_batch_indices)
             
-            y_pred_batch = self.forward(X_batch_indices)
+            y_pred_batch = self.forward(X_batch)
             pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
             all_pred_y.extend(pred_y)
 
@@ -190,11 +195,16 @@ class Method_text_classification(method, nn.Module):
 
     def run(self):
         print('method running...')
-        print('--start training...')
-        self.train(self.data['train']['X'], self.data['train']['y'])
-        print('--start testing...')
         
-        pred_y = self.test(self.data['test']['X'])
+        if not self.load_model:
+            print('--start training...')
+            self.train(self.data['train']['X'], self.data['train']['y'])
+            print('--start testing...')
+            pred_y = self.test(self.data['test']['X'])                     # only for testing
+        else:
+            # Make sure that the architecture in init matches the architecture that was saved
+            pred_y = self.load_and_test(self.data['test']['X'])        # for loading in a model and testing
+        
         accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
         accuracy_evaluator.data = {'true_y': self.data['test']['y'], 'pred_y': pred_y}
         accuracy_evaluator.evaluate()
