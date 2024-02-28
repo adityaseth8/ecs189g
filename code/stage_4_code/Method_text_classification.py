@@ -117,6 +117,7 @@ class Method_text_classification(method, nn.Module):
                 X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
 
                 # Look up embeddings
+                X_batch = self.emb(X_batch_indices)
                 
                 y_pred = self.forward(X_batch)
                 # print("y pred", y_pred.shape)
@@ -179,7 +180,7 @@ class Method_text_classification(method, nn.Module):
             X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
 
             # Look up embeddings
-            # X_batch = self.emb(X_batch_indices)
+            X_batch = self.emb(X_batch_indices)
             
             y_pred_batch = self.forward(X_batch_indices)
             pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
