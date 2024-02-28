@@ -25,7 +25,7 @@ class Dataset_Loader(dataset):
     
     def __init__(self, dName=None, dDescription=None):
         super().__init__(dName, dDescription)
-        with open("./data/stage_4_data/text_classification/average_word_embed.txt", "r") as f:
+        with open(f"./data/stage_4_data/text_classification/average_word_embed{self.embed_dim}.txt", "r") as f:
             lines = f.readlines()
             f.close()
             for line in lines:
@@ -35,7 +35,6 @@ class Dataset_Loader(dataset):
         glove.stoi["unk_token"] = len(glove.stoi)
         glove.itos.append("unk_token")
         glove.vectors = np.vstack([glove.vectors, self.average_word_embed])  # Append the new embedding to the existing embeddings
-
 
     def clean_string(self, string):
         cleanStr = ''
