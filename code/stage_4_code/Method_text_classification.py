@@ -14,16 +14,17 @@ import random
 class Method_text_classification(method, nn.Module):
     # If available, use the first GPU
     
-    max_epoch = 2
+    max_epoch = 10
     learning_rate = 1e-3
     batch_size = 125    # must be a factor of 25000 because of integer division
     embed_dim = 100     # must be the same as the glove dim
-    hidden_size = 4
-    num_layers = 1
+    hidden_size = 16
+    num_layers = 2
     L = 151 # 75th percentile of length of reviews = 151
     def __init__(self, mName, mDescription, num_classes=2):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.emb = nn.Embedding(num_embeddings=len(glove.stoi), 
                                 embedding_dim=glove.vectors.size(1)).to(self.device)
         self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
@@ -37,9 +38,9 @@ class Method_text_classification(method, nn.Module):
         
         # Forward propagate the RNN
         out, (hidden, _) = self.rnn(x)
-        print(hidden.shape)
+        # print(hidden.shape)
         hidden = hidden[-1, :, :]
-        print(hidden.shape)
+        # print(hidden.shape)
 
         # Pass the output of the last time step to the classifier
         out = self.fc(hidden)
@@ -87,8 +88,8 @@ class Method_text_classification(method, nn.Module):
                 X_batch = self.emb(X_batch_indices)
                 
                 y_pred = self.forward(X_batch)
-                print("y pred", y_pred.shape)
-                print("y_batch", y_batch.shape)
+                # print("y pred", y_pred.shape)
+                # print("y_batch", y_batch.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
