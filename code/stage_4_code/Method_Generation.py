@@ -38,8 +38,10 @@ class Method_Generation(method, nn.Module):
     def forward(self, x):
         x = self.emb(x)
         out, (hidden, _) = self.rnn(x)
-        out = self.dropout(out)
-        out = self.fc(out)
+        hidden = hidden[-1, :, :]
+
+        hidden = self.dropout(hidden)
+        out = self.fc(hidden)   
         return out
 
     def train(self, X, y):
@@ -55,22 +57,22 @@ class Method_Generation(method, nn.Module):
                 end_idx = (batch_idx + 1) * self.batch_size
 
                 X_batch = torch.LongTensor(X[start_idx:end_idx]) # numpy arr, strings of tokens
-                y_batch = torch.LongTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
+                y_batch = torch.FloatTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
                 print("X_batch.shape", X_batch.shape)
 
                 y_pred = self.forward(X_batch)
-                # y_pred = y_pred.view(-1, y_pred.size(-1))
-                # y_batch = y_batch.view(-1)
+                # print(y_pred)
+                # print(y_batch)
 
-                # print("y_batch.shape", y_batch.shape)
-                # print("y_pred.shape", y_pred.shape)
+                print("y_batch.shape", y_batch.shape)
+                print("y_pred.shape", y_pred.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
                 optimizer.step()
 
-                accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred.max(1)[1]}
-                accuracy = accuracy_evaluator.evaluate()
+                accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred}
+                accuracy = accuracy_evaluator.mse_evaluate()
                 current_loss = train_loss.item()    
                 losses.append(current_loss)
                 epochs.append(epoch + batch_idx / num_batches)
