@@ -63,7 +63,7 @@ class Method_text_classification(method, nn.Module):
 
         # Pass the output of the last time step to the classifier
         out = self.fc(hidden)
-        out = self.act(out)
+        # out = self.act(out)
 
         return out
 
@@ -91,6 +91,9 @@ class Method_text_classification(method, nn.Module):
                         seqArr = seq[:self.L]
                     else:
                         seqArr = seq
+                    for word in list(glove.stoi.keys())[:5]:
+                        print(f"{word}: {glove.stoi[word]}")
+                    exit(0)
 
                     for word in seqArr:
                         if word in glove.stoi:                      # Word is in vocab
