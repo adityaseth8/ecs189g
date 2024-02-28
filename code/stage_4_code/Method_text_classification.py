@@ -27,6 +27,8 @@ class Method_text_classification(method, nn.Module):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
         
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         # Handling out of vocab words: 
         # Source: https://stackoverflow.com/questions/49239941/what-is-unk-in-the-pretrained-glove-vector-files-e-g-glove-6b-50d-txt
         # with open(self.GLOVE_FILE, 'r', encoding='utf-8') as f:
