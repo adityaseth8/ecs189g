@@ -27,7 +27,7 @@ class Method_text_classification(method, nn.Module):
         nn.Module.__init__(self)
         self.emb = nn.Embedding(num_embeddings=len(glove.stoi), 
                                 embedding_dim=glove.vectors.size(1)).to(self.device)
-        self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
+        self.rnn = nn.RNN(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
         self.fc = nn.Linear(self.hidden_size, num_classes).to(self.device)
         self.act = nn.ReLU().to(self.device)
 
@@ -37,14 +37,14 @@ class Method_text_classification(method, nn.Module):
         # Output shape: 125, 151, 4
         x = self.emb(x)
         # Forward propagate the RNN
-        out, (hidden, _) = self.rnn(x)
+        out, hidden = self.rnn(x)
         # print(hidden.shape)
         hidden = hidden[-1, :, :]
         # print(hidden.shape)
 
         # Pass the output of the last time step to the classifier
         out = self.fc(hidden)
-        out = self.act(out)
+        # out = self.act(out)
 
         return out
 
@@ -71,12 +71,16 @@ class Method_text_classification(method, nn.Module):
                         seqArr = seq[:self.L]
                     else:
                         seqArr = seq
+                    for word in list(glove.stoi.keys())[:5]:
+                        print(f"{word}: {glove.stoi[word]}")
+                    exit(0)
 
                     for word in seqArr:
                         if word in glove.stoi:
                             seq_indices.append(glove.stoi[word])
                         else:
                             seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
+                            # seq_indices.append('<unk>')
                     
                     # Pad the sequence to the maximum length within the batch
                     seq_indices += [np.random.randint(0, len(glove.stoi))] * (self.L - len(seq_indices))
@@ -133,6 +137,7 @@ class Method_text_classification(method, nn.Module):
                         seq_indices.append(glove.stoi[word])
                     else:
                         seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
+                        # seq_indices.append('<unk>')
                 
                 # Pad the sequence to the maximum length within the batch
                 seq_indices += [np.random.randint(0, len(glove.stoi))] * (self.L - len(seq_indices))
