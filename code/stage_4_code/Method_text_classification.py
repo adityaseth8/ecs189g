@@ -14,12 +14,12 @@ class Method_text_classification(method, nn.Module):
     # If available, use the first GPU
     
     load_model = False
-    max_epoch = 1
+    max_epoch = 15
     learning_rate = 2e-3
     batch_size = 200    # must be a factor of 25000 because of integer division
     embed_dim = 300     # must be the same as the glove dim
-    hidden_size = 1
-    num_layers = 1
+    hidden_size = 128
+    num_layers = 2
     L = 151 # 75th percentile of length of reviews = 151
     GLOVE_FILE = os.path.join(".vector_cache", f"glove.6B.{embed_dim}d.txt")
     average_word_embed = []
@@ -69,7 +69,7 @@ class Method_text_classification(method, nn.Module):
         return out
 
     def train(self, X, y):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.1)
         loss_function = nn.CrossEntropyLoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
@@ -92,9 +92,6 @@ class Method_text_classification(method, nn.Module):
                         seqArr = seq[:self.L]
                     else:
                         seqArr = seq
-                    for word in list(glove.stoi.keys())[:5]:
-                        print(f"{word}: {glove.stoi[word]}")
-                    exit(0)
 
                     for word in seqArr:
                         if word in glove.stoi:                      # Word is in vocab
