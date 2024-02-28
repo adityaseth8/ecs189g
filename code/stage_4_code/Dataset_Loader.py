@@ -51,7 +51,9 @@ class Dataset_Loader(dataset):
         return X, y
     
     def parse_jokes(self, file_name): ## NOT DONE YET
-
+        X, y = [], []
+        sliding_window = 5
+        next(f) # ignore line 1        
         f = open(self.dataset_source_folder_path + file_name, 'r')
         for line in f:
             line = line.strip("\n")
@@ -64,9 +66,18 @@ class Dataset_Loader(dataset):
             print(tokens)
             
             # sliding window
+            # tokens 10, s_w 5 --> [0,4] + [5], [1,5] + [6], [2,6] + [7], [3,7] + [8], [4,8] + [9]
+            # 10 - 5 = 5 -> range(5) = 0 1 2 3 4.
+            for i in range(0, len(tokens) - sliding_window):
+                input_sequence = tokens[i:i + sliding_window]
+                correct_next_token = [tokens[i + sliding_window]]
+
+                X.append(input_sequence)
+                y.append(correct_next_token)
+
         f.close()
-        
-        return 
+
+        return X, y
         
 
 
