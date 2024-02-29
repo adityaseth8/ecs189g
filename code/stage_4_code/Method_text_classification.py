@@ -4,7 +4,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchtext
-glove = torchtext.vocab.GloVe(name="6B", dim=200)
+glove = torchtext.vocab.GloVe(name="6B", dim=100)
 import torch
 from torch import nn
 import numpy as np
@@ -15,12 +15,12 @@ class Method_text_classification(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     load_model = False
-    max_epoch = 7
-    learning_rate = 3e-3
+    max_epoch = 50
+    learning_rate = 1e-4
     # 1, 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250, 500, 625, 1000, 1250, 2500, 3125, 5000, 6250, 12500, 25000
     batch_size = 50    # must be a factor of 25000 because of integer division
-    embed_dim = 200    # must be the same as the glove dim
-    hidden_size = 64
+    embed_dim = 100    # must be the same as the glove dim
+    hidden_size = 128
     num_layers = 2
     
     # going to change hidden size, num layers, and embed dim -> if overfitting, change weight decay and dropout
@@ -28,7 +28,7 @@ class Method_text_classification(method, nn.Module):
     GLOVE_FILE = os.path.join(".vector_cache", f"glove.6B.{embed_dim}d.txt")
     average_word_embed = []
 
-    def __init__(self, mName, mDescription, num_classes=2):
+    def __init__(self, mName, mDescription, num_classes=1):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
         
@@ -73,30 +73,30 @@ class Method_text_classification(method, nn.Module):
         self.emb = nn.Embedding(num_embeddings=len(glove.stoi), 
                         embedding_dim=glove.vectors.shape[1]).to(self.device)
 
-        self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
-        self.dropout = nn.Dropout(0.35)
+        self.rnn = nn.RNN(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
+        self.dropout = nn.Dropout(0.3)
         self.fc = nn.Linear(self.hidden_size, num_classes).to(self.device)
         self.act = nn.Sigmoid().to(self.device)
         print("done init model")
 
     def forward(self, x):
         # Forward propagate the RNN
-        # out, hidden = self.rnn(x)           # RNN or GRU
-        out, (hidden, _) = self.rnn(x)    # LSTM
+        out, hidden = self.rnn(x)           # RNN or GRU
+        # out, (hidden, _) = self.rnn(x)    # LSTM
         # print(hidden.shape)
         hidden = hidden[-1, :, :]
-        hidden = self.dropout(hidden)
+        # hidden = self.dropout(hidden)
         # print(hidden.shape)
 
         # Pass the output of the last time step to the classifier
         out = self.fc(hidden)
-        # out = self.act(out)
+        out = self.act(out)
 
         return out
 
     def train(self, X, y):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0003)
-        loss_function = nn.CrossEntropyLoss().to(self.device)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0001)
+        loss_function = nn.BCELoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
@@ -108,7 +108,7 @@ class Method_text_classification(method, nn.Module):
                 end_idx = (batch_idx + 1) * self.batch_size
 
                 X_batch = X[start_idx:end_idx] # numpy arr, strings of tokens
-                y_batch = torch.LongTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
+                y_batch = torch.FloatTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
 
                 X_batch_indices = []
                 for seq in X_batch:
@@ -136,18 +136,26 @@ class Method_text_classification(method, nn.Module):
                 # Look up embeddings
                 X_batch = self.emb(X_batch_indices)
                 
+                # print(X_batch)
+                # print(X_batch.shape)
                 y_pred = self.forward(X_batch)
                 # print(y_pred.dtype)
+                # print(y_pred)
                 # print(y_batch.dtype)
                 # exit()
                 # print("y pred", y_pred.shape)
                 # print("y_batch", y_batch.shape)
+                # print(y_pred)
+                # print(y_pred.shape)
+                # exit()
+                y_pred = y_pred.squeeze(dim=1)
+                print(y_pred.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
                 optimizer.step()
 
-                accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred.max(1)[1]}
+                accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred}
                 accuracy = accuracy_evaluator.evaluate()
                 current_loss = train_loss.item()    
                 losses.append(current_loss)
@@ -155,22 +163,21 @@ class Method_text_classification(method, nn.Module):
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
         
             # Every 5 epochs, print training plot and save model
-            # if (epoch + 1) % 5 == 0:
-            
-            # Every epoch, print training plot and save model
-            plt.plot(epochs, losses, label='Training Loss')
-            plt.xlabel('Epoch')
-            plt.ylabel('Cross Entropy Loss')
-            plt.title('Training Convergence Plot')
-            # plt.legend()
-            plt.savefig(f"./result/stage_4_result/train_text_classification.png")
-            # plt.show()
-            
-            torch.save(self.state_dict(), f"./saved_models/text_classification_{epoch+1}.pt")
-            print(f"Model saved at epoch {epoch+1}")
+            if (epoch + 1) % 5 == 0:
+                # Every epoch, print training plot and save model
+                plt.plot(epochs, losses, label='Training Loss')
+                plt.xlabel('Epoch')
+                plt.ylabel('Cross Entropy Loss')
+                plt.title('Training Convergence Plot')
+                # plt.legend()
+                plt.savefig(f"./result/stage_4_result/train_text_classification.png")
+                # plt.show()
+                
+                torch.save(self.state_dict(), f"./saved_models/text_classification_{epoch+1}.pt")
+                print(f"Model saved at epoch {epoch+1}")
             
     def load_and_test(self, X):
-        model_path = "saved_models/text_classification_6.pt"
+        model_path = "saved_models/text_classification_30.pt"
         self.load_state_dict(torch.load(model_path))
         print("loaded in model")
         

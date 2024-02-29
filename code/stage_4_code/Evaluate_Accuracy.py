@@ -20,7 +20,7 @@ class Evaluate_Accuracy(evaluate):
         print('evaluating performance...')
 
         # Print classification report
-        print(classification_report(self.data['true_y'], self.data['pred_y'], labels=labels))
+        print(classification_report(self.data['true_y'].detach().numpy(), self.data['pred_y'].detach().numpy(), labels=labels))
 
         return accuracy_score(self.data['true_y'], self.data['pred_y'])
     
