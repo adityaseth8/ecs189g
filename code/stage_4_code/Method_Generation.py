@@ -1,14 +1,11 @@
 from code.base_class.method import method
 from code.stage_4_code.Evaluate_Accuracy import Evaluate_Accuracy
-from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchtext
 glove = torchtext.vocab.GloVe(name="6B", dim=50)
 import torch
 from torch import nn
 import numpy as np
-import os
 import pandas as pd
 
 class Method_Generation(method, nn.Module):
@@ -30,6 +27,7 @@ class Method_Generation(method, nn.Module):
         nn.Module.__init__(self)
         
         self.word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
+        self.word_map = self.word_map.sample(frac=1) # shuffle indexes
         
         # The number of embeddings is the number of unique words in the jokes dataset
         # For the word embeddings, use glove
@@ -93,29 +91,11 @@ class Method_Generation(method, nn.Module):
                 end_idx = (batch_idx + 1) * self.batch_size
                 
                 X_batch = torch.LongTensor(X[start_idx:end_idx]) # numpy arr, strings of tokens
-                # y_batch = torch.FloatTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
                 y_batch = torch.Tensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
-
-                # print("y_batch: ", y_batch)
-                # exit()
-                
-                # print("X_batch.shape", X_batch.shape)
-                # print("x batch data type: ", X_batch.dtype)
-                # print("x batch:")
-                # print(X_batch)
-                # print("y_batch: ", y_batch)
-                # exit()
                 
                 y_pred = self.forward(X_batch)
-                # print("y pred shape: ", y_pred.shape)
-                # print("y batch shape: ", y_batch.shape)
-                # print("y_pred: ", y_pred)
-                # print("y_batch: ", y_batch)
                 y_pred.requires_grad_()
-                # exit()
 
-                # print("y_batch.shape", y_batch.shape)
-                # print("y_pred.shape", y_pred.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 # print("train loss: ", train_loss)
                 optimizer.zero_grad()
@@ -154,6 +134,49 @@ class Method_Generation(method, nn.Module):
         with torch.no_grad():
             return self.test(X)
         
+    def clean_string(self, string):
+        cleanStr = ''
+
+        for char in string:
+            if char.isalpha():
+                cleanStr += char
+
+        return cleanStr
+    
+    def test(self, input):
+        word_gen_limit = 10
+        tokens = input.split(" ")
+
+        # remove punctuation
+        tokens = [self.clean_string(t).lower() for t in tokens]
+
+        seq_indices = []
+
+        # map to index
+        for t in tokens:
+            if t in self.word_map["token"].values.tolist():
+                idx = self.word_map.loc[self.word_map["token"] == t, "id"].iloc[0]
+            else:
+                idx = self.word_map.loc[self.word_map["token"] == "<unk>", "id"].iloc[0]
+            seq_indices.append(idx)
+                
+        # [1 2 3 4 5]  [6]    [1 2 3 4 5 6 7]
+        # [2 3 4 5 6]  [7]     
+        # start window sliding
+        for i in range(word_gen_limit):
+            y_pred = self.forward(seq_indices[i:])
+            seq_indices.append(y_pred)
+            if y_pred == 0:  # stop token
+                break
+                
+        # convert back to words
+        output = []
+        for idx in seq_indices:
+            if id in self.word_map["id"].values.tolist():
+                word = self.word_map.loc[self.word_map["id"] == idx, "id"].iloc[0]
+            output.append(word)
+        return output
+
     def run(self):
         print('method running...')
         if not self.load_model:
