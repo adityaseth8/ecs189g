@@ -43,12 +43,19 @@ class Dataset_Loader(dataset):
         if self.text_generation:
             glove.stoi["stop_token"] = len(glove.stoi)
             glove.itos.append("stop_token")
-            stop_token = np.zeros(self.embed_dim)
+            stop_token = np.ones(self.embed_dim)
             glove.vectors = np.vstack([glove.vectors, stop_token])
             # print(glove.stoi["stop_token"])
             # print(stop_token)
             # print(len(stop_token))
             # exit()
+        
+        # print(glove.stoi["unk_token"])
+        # print(glove.stoi["stop_token"])
+        # print(len(glove.stoi))
+        # exit()
+        
+        self.glove = glove
 
     def clean_string(self, string):
         cleanStr = ''
@@ -78,7 +85,7 @@ class Dataset_Loader(dataset):
         X, y = [], []
         sliding_window = 5       
         f = open(self.dataset_source_folder_path + file_name, 'r')
-        next(f) # ignore line 1 
+        next(f) # ignore line 1
         for line in f:
             line = line.strip("\n")
             joke = line.split(",", 1)[1]
@@ -108,6 +115,7 @@ class Dataset_Loader(dataset):
             # sliding window
             # tokens 10, s_w 5 --> [0,4] + [5], [1,5] + [6], [2,6] + [7], [3,7] + [8], [4,8] + [9]
             # 10 - 5 = 5 -> range(5) = 0 1 2 3 4.
+            # count = 0
             for i in range(0, len(seq_indices) - sliding_window):
                 input_sequence = seq_indices[i:i + sliding_window]
                 correct_next_token = [seq_indices[i + sliding_window]]
@@ -115,12 +123,11 @@ class Dataset_Loader(dataset):
                 # print(input_sequence, " FOLLOWED BY ", correct_next_token)
                 X.append(input_sequence)
                 y.append(correct_next_token)
-                # exit()
-            # print("X", X, "followed by", y)
-            # exit()    # Checks if the stop token is the last expected token
         f.close()
+        # print("X\n", X, "followed by\n", y)
         # print(len(X))
         # print(len(y))
+        # exit()
         return X, y
 
     def load(self):
@@ -128,7 +135,7 @@ class Dataset_Loader(dataset):
         train_features, train_labels, test_features, test_labels = None, None, None, None
         if self.dataset_train_file_name == "jokes_data":
             X, y = self.parse_jokes(self.dataset_train_file_name)
-            train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.2)
+            train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.2, shuffle=False)
         else:
             train_features, train_labels = self.parse(self.dataset_train_file_name)
             test_features, test_labels = self.parse(self.dataset_test_file_name)

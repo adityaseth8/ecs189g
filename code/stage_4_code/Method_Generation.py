@@ -4,7 +4,8 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchtext
-glove = torchtext.vocab.GloVe(name="6B", dim=50)
+# glove = torchtext.vocab.GloVe(name="6B", dim=50)
+from code.stage_4_code.Dataset_Loader import glove
 import torch
 from torch import nn
 import numpy as np
@@ -14,14 +15,14 @@ class Method_Generation(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
-    max_epoch = 1
+
+    max_epoch = 5
     learning_rate = 1e-3
     batch_size = 3 # must be factor of 1623?
     embed_dim = 50
     hidden_size = 128
     num_layers = 2
     # self.L = 20  No need to truncate i believe
-
 
     def __init__(self, mName, mDescription, num_classes=1):
         method.__init__(self, mName, mDescription)
@@ -31,18 +32,40 @@ class Method_Generation(method, nn.Module):
 
         self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
         self.dropout = nn.Dropout(0.35)
-        self.fc = nn.Linear(self.hidden_size, num_classes).to(self.device)
+        self.fc = nn.Linear(self.hidden_size, len(glove.stoi)).to(self.device)
         # self.act = nn.ReLU().to(self.device)
-
 
     def forward(self, x):
         x = self.emb(x)
+        # print(x)
+        # exit()
         out, (hidden, _) = self.rnn(x)
         hidden = hidden[-1, :, :]
 
+        # print(hidden.shape)
+        # exit()
         # hidden = self.dropout(hidden)
-        out = self.fc(hidden)   
-        return out
+        out = self.fc(hidden)
+        
+        # print(out.shape)
+        
+        # **Apply softmax to obtain probabilities**
+        probs = torch.nn.functional.softmax(out, dim=1)
+        
+        # print(probs)
+        # print(probs.shape)
+        pred_indices = torch.argmax(probs, dim=1)  # Take the index of the word with the highest probability
+        
+        # print(pred_indices)
+        pred_indices = pred_indices.float()
+        # predicted_words = [glove.itos[index] for index in probs]  # Get the corresponding words
+        
+        # print(predicted_words)
+        pred_indices = torch.FloatTensor(pred_indices.unsqueeze(1))
+        # print(pred_indices.shape)
+        # exit()
+        
+        return pred_indices
 
     def train(self, X, y):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0)
@@ -51,26 +74,42 @@ class Method_Generation(method, nn.Module):
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
         num_batches = len(X) // self.batch_size    # floor division
+        
+        # print(X[0])
+        # print(y[0])
+        # exit()
         for epoch in range(self.max_epoch):
             for batch_idx in range(num_batches):
+                
                 start_idx = batch_idx * self.batch_size
                 end_idx = (batch_idx + 1) * self.batch_size
-
+                
                 X_batch = torch.LongTensor(X[start_idx:end_idx]) # numpy arr, strings of tokens
-                y_batch = torch.FloatTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
-                print("X_batch.shape", X_batch.shape)
+                # y_batch = torch.FloatTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
+                y_batch = torch.Tensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
 
-                print("x batch data type: ", X_batch.dtype)
+                # print("y_batch: ", y_batch)
+                # exit()
+                
+                # print("X_batch.shape", X_batch.shape)
+                # print("x batch data type: ", X_batch.dtype)
+                # print("x batch:")
+                # print(X_batch)
+                # print("y_batch: ", y_batch)
+                # exit()
+                
                 y_pred = self.forward(X_batch)
-                print("y pred shape: ", y_pred.shape)
-                print("y batch shape: ", y_batch.shape)
-                print("y_pred: ", y_pred)
-                print("y_batch: ", y_batch)
+                # print("y pred shape: ", y_pred.shape)
+                # print("y batch shape: ", y_batch.shape)
+                # print("y_pred: ", y_pred)
+                # print("y_batch: ", y_batch)
+                y_pred.requires_grad_()
                 # exit()
 
                 # print("y_batch.shape", y_batch.shape)
                 # print("y_pred.shape", y_pred.shape)
                 train_loss = loss_function(y_pred, y_batch)
+                print("train loss: ", train_loss)
                 optimizer.zero_grad()
                 train_loss.backward()
                 optimizer.step()
