@@ -24,6 +24,7 @@ class Dataset_Loader(dataset):
     embed_dim = 300     # must be the same as the glove dim
     GLOVE_FILE = os.path.join(".vector_cache", f"glove.6B.{embed_dim}d.txt")
     average_word_embed = []
+    word_map = {}
     
     def __init__(self, dName=None, dDescription=None):
         super().__init__(dName, dDescription)
@@ -55,8 +56,8 @@ class Dataset_Loader(dataset):
         # print(len(glove.stoi))
         # exit()
         
-        self.glove = glove
-
+        self.word_map = {}
+        
     def clean_string(self, string):
         cleanStr = ''
 
@@ -80,9 +81,12 @@ class Dataset_Loader(dataset):
         # X = np.array(X)
         y = np.array(y)
         return X, y
-    
+
     def parse_jokes(self, file_name):     
         X, y = [], []
+        
+        # let the stop token be the 0th index
+        self.word_map["STOP"] = 0
         sliding_window = 5       
         f = open(self.dataset_source_folder_path + file_name, 'r')
         next(f) # ignore line 1
@@ -94,22 +98,33 @@ class Dataset_Loader(dataset):
 
             # remove punctuation
             tokens = [self.clean_string(t).lower() for t in tokens]
-            # print(tokens)
             
+            # defining vocabulary set
+            # keep track of unique word mapping
+            for token in tokens:
+                if token not in self.word_map:
+                    self.word_map[token] = len(self.word_map)
+                    
+            # print(self.word_map)
+            # exit()
+             
             # add the stop token
             tokens.append("STOP")
-            # print(tokens)
-            # exit()
             
-            # convert to glove numerical indices here..
+            # Construct sequence indices
             seq_indices = []
             for word in tokens:
-                if word == "STOP":                                  # Stop token   
-                    seq_indices.append(glove.stoi["stop_token"])
-                elif word in glove.stoi:                            # Word is in vocab
-                    seq_indices.append(glove.stoi[word])
-                else: # Out of vocab words are excluded             # If word is not in vocab, append unknown token
-                    seq_indices.append(glove.stoi["unk_token"])
+                seq_indices.append(self.word_map[f"{word}"])
+
+            # convert to glove numerical indices here..
+            # seq_indices = []
+            # for word in tokens:
+            #     if word == "STOP":                                  # Stop token   
+            #         seq_indices.append(glove.stoi["stop_token"])
+            #     elif word in glove.stoi:                            # Word is in vocab
+            #         seq_indices.append(glove.stoi[word])
+            #     else: # Out of vocab words are excluded             # If word is not in vocab, append unknown token
+            #         seq_indices.append(glove.stoi["unk_token"])
                     
             # print("Seq indices", seq_indices)
             # sliding window
@@ -123,7 +138,9 @@ class Dataset_Loader(dataset):
                 # print(input_sequence, " FOLLOWED BY ", correct_next_token)
                 X.append(input_sequence)
                 y.append(correct_next_token)
+                
         f.close()
+        
         # print("X\n", X, "followed by\n", y)
         # print(len(X))
         # print(len(y))

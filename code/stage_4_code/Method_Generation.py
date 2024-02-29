@@ -4,35 +4,42 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchtext
-# glove = torchtext.vocab.GloVe(name="6B", dim=50)
-from code.stage_4_code.Dataset_Loader import glove
+glove = torchtext.vocab.GloVe(name="6B", dim=50)
 import torch
 from torch import nn
 import numpy as np
 import os
+import pandas as pd
 
 class Method_Generation(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
-    max_epoch = 5
+    max_epoch = 50
     learning_rate = 1e-3
-    batch_size = 3 # must be factor of 1623?
+    batch_size = 541 # must be factor of 1623 (1, 3, 541, 1623)
     embed_dim = 50
     hidden_size = 128
-    num_layers = 2
+    num_layers = 4
+    
     # self.L = 20  No need to truncate i believe
 
     def __init__(self, mName, mDescription, num_classes=1):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
-        self.emb = nn.Embedding(num_embeddings=len(glove.stoi), 
+        
+        self.word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
+        
+        # The number of embeddings is the number of unique words in the jokes dataset
+        # For the word embeddings, use glove
+        self.emb = nn.Embedding(num_embeddings=len(self.word_map), 
                     embedding_dim=glove.vectors.shape[1]).to(self.device)
-
+        
         self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
         self.dropout = nn.Dropout(0.35)
-        self.fc = nn.Linear(self.hidden_size, len(glove.stoi)).to(self.device)
+        self.fc = nn.Linear(self.hidden_size, len(self.word_map)).to(self.device)
+
         # self.act = nn.ReLU().to(self.device)
 
     def forward(self, x):
@@ -57,6 +64,7 @@ class Method_Generation(method, nn.Module):
         pred_indices = torch.argmax(probs, dim=1)  # Take the index of the word with the highest probability
         
         # print(pred_indices)
+        # print(pred_indices.shape)
         pred_indices = pred_indices.float()
         # predicted_words = [glove.itos[index] for index in probs]  # Get the corresponding words
         
@@ -109,17 +117,17 @@ class Method_Generation(method, nn.Module):
                 # print("y_batch.shape", y_batch.shape)
                 # print("y_pred.shape", y_pred.shape)
                 train_loss = loss_function(y_pred, y_batch)
-                print("train loss: ", train_loss)
+                # print("train loss: ", train_loss)
                 optimizer.zero_grad()
                 train_loss.backward()
                 optimizer.step()
 
                 accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred}
-                accuracy = accuracy_evaluator.mse_evaluate()
-                current_loss = train_loss.item()    
+                mse = accuracy_evaluator.mse_evaluate()
+                current_loss = train_loss.item()
                 losses.append(current_loss)
                 epochs.append(epoch + batch_idx / num_batches)
-                print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
+                print('Epoch:', epoch, 'Batch:', batch_idx, 'Loss:', current_loss)
         
             # Every 5 epochs, print training plot and save model
             if (epoch + 1) % 5 == 0:
