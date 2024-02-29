@@ -149,7 +149,7 @@ class Method_text_classification(method, nn.Module):
                 # print(y_pred.shape)
                 # exit()
                 y_pred = y_pred.squeeze(dim=1)
-                print(y_pred.shape)
+                # print(y_pred.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
