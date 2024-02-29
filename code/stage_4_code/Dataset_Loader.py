@@ -87,6 +87,8 @@ class Dataset_Loader(dataset):
         
         # let the stop token be the 0th index
         self.word_map["STOP"] = 0
+        # df = pd.DataFrame(columns=['id', 'token'])
+        # df = pd.concat([df, pd.DataFrame([{'id': 0, 'token': "STOP"}])], ignore_index=True)
         sliding_window = 5       
         f = open(self.dataset_source_folder_path + file_name, 'r')
         next(f) # ignore line 1
@@ -103,8 +105,9 @@ class Dataset_Loader(dataset):
             # keep track of unique word mapping
             for token in tokens:
                 if token not in self.word_map:
+                    # df = pd.concat([df, pd.DataFrame([{'id': len(self.word_map), 'token': token}])], ignore_index=True)
                     self.word_map[token] = len(self.word_map)
-                    
+
             # print(self.word_map)
             # exit()
              
@@ -140,6 +143,9 @@ class Dataset_Loader(dataset):
                 y.append(correct_next_token)
                 
         f.close()
+        
+        # df.to_csv("./data/stage_4_data/jokes_vocab.csv", index_label=False, index=False)
+        # exit()
         
         # print("X\n", X, "followed by\n", y)
         # print(len(X))
