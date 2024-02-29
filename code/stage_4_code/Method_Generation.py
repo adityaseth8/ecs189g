@@ -172,7 +172,7 @@ class Method_Generation(method, nn.Module):
         # convert back to words
         output = []
         for idx in seq_indices:
-            if id in self.word_map["id"].values.tolist():
+            if idx in self.word_map["id"].values.tolist():
                 word = self.word_map.loc[self.word_map["id"] == idx, "id"].iloc[0]
             output.append(word)
         return output
