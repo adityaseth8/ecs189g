@@ -179,14 +179,15 @@ class Method_Generation(method, nn.Module):
 
     def run(self):
         print('method running...')
+        input = "What did the dog say?"
         if not self.load_model:
             print('--start training...')
             self.train(self.data['train']['X'], self.data['train']['y'])
             print('--start testing...')
-            pred_y = self.test(self.data['test']['X'])                     # only for testing
+            pred_y = self.test(input)                     # only for testing
         else:
             # Make sure that the architecture in init matches the architecture that was saved
-            pred_y = self.load_and_test(self.data['test']['X'])        # for loading in a model and testing
+            pred_y = self.load_and_test(input)        # for loading in a model and testing
         
         accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
         accuracy_evaluator.data = {'true_y': self.data['test']['y'], 'pred_y': pred_y}

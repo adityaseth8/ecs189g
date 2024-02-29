@@ -158,7 +158,8 @@ class Dataset_Loader(dataset):
         train_features, train_labels, test_features, test_labels = None, None, None, None
         if self.dataset_train_file_name == "jokes_data":
             X, y = self.parse_jokes(self.dataset_train_file_name)
-            train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.2, shuffle=False)
+            train_features, train_labels, test_features, test_labels = X, y, None, None
+            # train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.2, shuffle=False)
         else:
             train_features, train_labels = self.parse(self.dataset_train_file_name)
             test_features, test_labels = self.parse(self.dataset_test_file_name)
