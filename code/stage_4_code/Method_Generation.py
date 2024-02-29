@@ -13,12 +13,12 @@ class Method_Generation(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
-    max_epoch = 50
-    learning_rate = 1e-3
+    max_epoch = 10
+    learning_rate = 2e-3
     batch_size = 541 # must be factor of 1623 (1, 3, 541, 1623)
     embed_dim = 50
     hidden_size = 128
-    num_layers = 4
+    num_layers = 1
     
     # self.L = 20  No need to truncate i believe
 
@@ -93,6 +93,9 @@ class Method_Generation(method, nn.Module):
                 X_batch = torch.LongTensor(X[start_idx:end_idx]) # numpy arr, strings of tokens
                 y_batch = torch.Tensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
                 
+                # print("x batch: ", X_batch)
+                # print("x batch shape: ", X_batch.shape)
+                # exit()
                 y_pred = self.forward(X_batch)
                 y_pred.requires_grad_()
 
@@ -149,7 +152,8 @@ class Method_Generation(method, nn.Module):
 
         # remove punctuation
         tokens = [self.clean_string(t).lower() for t in tokens]
-
+        print(tokens)
+        output_ID = []
         seq_indices = []
 
         # map to index
@@ -160,21 +164,42 @@ class Method_Generation(method, nn.Module):
                 idx = self.word_map.loc[self.word_map["token"] == "<unk>", "id"].iloc[0]
             seq_indices.append(idx)
                 
-        # [1 2 3 4 5]  [6]    [1 2 3 4 5 6 7]
-        # [2 3 4 5 6]  [7]     
-        # start window sliding
+        # print(seq_indices)
+        
         for i in range(word_gen_limit):
-            y_pred = self.forward(seq_indices[i:])
-            seq_indices.append(y_pred)
-            if y_pred == 0:  # stop token
+            seq_indices_tensor = torch.LongTensor(seq_indices).unsqueeze_(dim=0)
+            
+            y_pred = self.forward(seq_indices_tensor)
+            
+            seq_indices.append(y_pred.item())
+            output_ID.append(y_pred.item())
+            # print("appended: ", y_pred.item())
+            
+            seq_indices = seq_indices[1:]
+            
+            if y_pred.item() == 0:  # stop token
+                print("hit stop token")
                 break
                 
         # convert back to words
-        output = []
-        for idx in seq_indices:
+        result = []
+        for idx in output_ID:
             if idx in self.word_map["id"].values.tolist():
-                word = self.word_map.loc[self.word_map["id"] == idx, "id"].iloc[0]
-            output.append(word)
+                word = self.word_map.loc[self.word_map["id"] == idx, "token"].iloc[0]
+            result.append(word)
+            
+        # print generated joke
+        print(result)
+        result_str = ""
+        for i in range(5):
+            result_str += str(tokens[i]) + " "
+            
+        for i in range(len(result)):
+            result_str += str(result[i]) + " "
+    
+        print("Generated joke: ", result_str)
+        exit()
+        
         return output
 
     def run(self):
@@ -189,8 +214,10 @@ class Method_Generation(method, nn.Module):
             # Make sure that the architecture in init matches the architecture that was saved
             pred_y = self.load_and_test(input)        # for loading in a model and testing
         
-        accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
-        accuracy_evaluator.data = {'true_y': self.data['test']['y'], 'pred_y': pred_y}
-        accuracy_evaluator.evaluate()
+        return pred_y
+    
+        # accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
+        # accuracy_evaluator.data = {'true_y': self.data['test']['y'], 'pred_y': pred_y}
+        # accuracy_evaluator.evaluate()
 
-        return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
+        # return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
