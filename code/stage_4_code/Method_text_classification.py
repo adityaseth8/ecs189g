@@ -15,7 +15,7 @@ class Method_text_classification(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     load_model = False
-    max_epoch = 50
+    max_epoch = 1
     learning_rate = 1e-4
     # 1, 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250, 500, 625, 1000, 1250, 2500, 3125, 5000, 6250, 12500, 25000
     batch_size = 50    # must be a factor of 25000 because of integer division
@@ -95,6 +95,7 @@ class Method_text_classification(method, nn.Module):
         return out
 
     def train(self, X, y):
+        self.to(self.device)
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0001)
         loss_function = nn.BCELoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
@@ -108,7 +109,7 @@ class Method_text_classification(method, nn.Module):
                 end_idx = (batch_idx + 1) * self.batch_size
 
                 X_batch = X[start_idx:end_idx] # numpy arr, strings of tokens
-                y_batch = torch.FloatTensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
+                y_batch = torch.FloatTensor(y[start_idx:end_idx]).to(self.device)    # to match data type as X batch (long tensor)
 
                 X_batch_indices = []
                 for seq in X_batch:
@@ -134,7 +135,7 @@ class Method_text_classification(method, nn.Module):
                 X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
 
                 # Look up embeddings
-                X_batch = self.emb(X_batch_indices)
+                X_batch = self.emb(X_batch_indices).to(self.device)
                 
                 # print(X_batch)
                 # print(X_batch.shape)
@@ -163,7 +164,7 @@ class Method_text_classification(method, nn.Module):
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
         
             # Every 5 epochs, print training plot and save model
-            if (epoch + 1) % 5 == 0:
+            if (epoch + 1) % 1 == 0:
                 # Every epoch, print training plot and save model
                 plt.plot(epochs, losses, label='Training Loss')
                 plt.xlabel('Epoch')
@@ -189,6 +190,7 @@ class Method_text_classification(method, nn.Module):
             return self.test(X)
 
     def test(self, X):
+        self.to(self.device)
         num_batches = len(X) // self.batch_size    # floor division
         all_pred_y = []
 
@@ -221,7 +223,7 @@ class Method_text_classification(method, nn.Module):
             X_batch_indices = torch.tensor(X_batch_indices).to(self.device)
 
             # Look up embeddings
-            X_batch = self.emb(X_batch_indices)
+            X_batch = self.emb(X_batch_indices).to(self.device)
             
             y_pred_batch = self.forward(X_batch)
             pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion

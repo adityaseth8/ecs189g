@@ -29,11 +29,11 @@ class Evaluate_Accuracy(evaluate):
             else:
                 self.data['pred_y'][i] = 1
 
-        print(classification_report(torch.Tensor(self.data['true_y']).detach().numpy(), 
-                                    torch.Tensor(self.data['pred_y']).detach().numpy(), labels=labels))
+        print(classification_report(torch.Tensor(self.data['true_y']).cpu().detach().numpy(), 
+                                    torch.Tensor(self.data['pred_y']).cpu().detach().numpy(), labels=labels))
 
-        return accuracy_score(torch.Tensor(self.data['true_y']).detach().numpy(), 
-                              torch.Tensor(self.data['pred_y']).detach().numpy())
+        return accuracy_score(torch.Tensor(self.data['true_y']).cpu().detach().numpy(), 
+                              torch.Tensor(self.data['pred_y']).cpu().detach().numpy())
     
     def mse_evaluate(self):
         mse = mean_squared_error(self.data['true_y'].detach().numpy(), self.data['pred_y'].detach().numpy())
