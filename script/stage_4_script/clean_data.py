@@ -5,7 +5,7 @@ from nltk.stem.porter import PorterStemmer
 import os
 import pandas as pd
 
-# nltk.download("punkt")
+nltk.download("punkt")
 
 nltk.download('stopwords', quiet=True)
 
@@ -50,21 +50,21 @@ def create_csv(directory):
             words = [w for w in words if not w in stop_words]
 
             # get stem words
-            porter = PorterStemmer()
-            stemmed = [porter.stem(word) for word in words]
+            # porter = PorterStemmer()
+            # stemmed = [porter.stem(word) for word in words]
 
             sentiment = directory_name
             
             # append new row to data frame
             if sentiment == "pos":
-                new_row = {'Tokens': stemmed, 'Sentiment': 1}   # positive sentiment denoted as 1
+                new_row = {'Tokens': words, 'Sentiment': 1}   # positive sentiment denoted as 1
             else:
-                new_row = {'Tokens': stemmed, 'Sentiment': 0}   # negative sentiment denoted as 0
+                new_row = {'Tokens': words, 'Sentiment': 0}   # negative sentiment denoted as 0
 
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
     train_or_test = directory.split("/")[-1]
-    result_path = os.path.join(os.getcwd(), "script", "stage_4_script", f"clean_data_{train_or_test}.csv")
+    result_path = os.path.join(os.getcwd(), "script", "stage_4_script", f"clean_data_{train_or_test}1.csv")
     df.to_csv(result_path, index=False)
 
 path_train = "./data/stage_4_data/text_classification/train"

@@ -14,12 +14,12 @@ class Method_Generation(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
-    max_epoch = 100
+    max_epoch = 25
     learning_rate = 1e-3
-    batch_size = 541 # must be factor of 1623 (1, 3, 541, 1623)
-    embed_dim = 128
+    batch_size = 1623 # must be factor of 1623 (1, 3, 541, 1623)
+    embed_dim = 256
     hidden_size = 256
-    num_layers = 3
+    num_layers = 2
     
     # self.L = 20  No need to truncate i believe
 
@@ -35,13 +35,13 @@ class Method_Generation(method, nn.Module):
         self.emb = nn.Embedding(num_embeddings=len(self.word_map), 
                     embedding_dim=self.embed_dim).to(self.device)
         
-        self.rnn = nn.RNN(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, dropout=0.2, batch_first=True).to(self.device)
+        self.rnn = nn.GRU(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, dropout=0.2, batch_first=True).to(self.device)
         # torch.nn.init.xavier_uniform_(self.rnn.weight_ih_l0)
         # torch.nn.init.xavier_uniform_(self.rnn.weight_hh_l0)
         # torch.nn.init.zeros_(self.rnn.bias_ih_l0)
         # torch.nn.init.zeros_(self.rnn.bias_hh_l0)
 
-        # self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.2)
         self.fc = nn.Linear(self.hidden_size, len(self.word_map)).to(self.device)
 
         # self.act = nn.ReLU().to(self.device)
@@ -58,7 +58,7 @@ class Method_Generation(method, nn.Module):
 
         # issue is that we're getting predictions for 5 words which are from our sequence length; we want only one prediction value...
         # find max probability of the next word for the LAST WORD
-        # out = self.dropout(out)
+        out = self.dropout(out)
         out = self.fc(out)
         # print(out)
         # print(out.shape) # 541: Batch Size; 5: sequence length; 4624: vocab size from num_embeddings
@@ -142,7 +142,7 @@ class Method_Generation(method, nn.Module):
             if (epoch + 1) % 5 == 0:
                 plt.plot(epochs, losses, label='Training Loss')
                 plt.xlabel('Epoch')
-                plt.ylabel('Cross Entropy Loss')
+                plt.ylabel('MSE Loss')
                 plt.title('Training Convergence Plot')
                 # plt.legend()
                 plt.savefig(f"./result/stage_4_result/train_text_generation.png")
