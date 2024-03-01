@@ -5,6 +5,7 @@ import torchtext
 glove = torchtext.vocab.GloVe(name="6B", dim=50)
 import torch
 from torch import nn
+import torch.nn.utils as torch_utils
 import numpy as np
 import pandas as pd
 
@@ -13,12 +14,12 @@ class Method_Generation(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
-    max_epoch = 10
-    learning_rate = 2e-3
+    max_epoch = 100
+    learning_rate = 1e-3
     batch_size = 541 # must be factor of 1623 (1, 3, 541, 1623)
-    embed_dim = 50
-    hidden_size = 128
-    num_layers = 1
+    embed_dim = 128
+    hidden_size = 256
+    num_layers = 3
     
     # self.L = 20  No need to truncate i believe
 
@@ -32,42 +33,71 @@ class Method_Generation(method, nn.Module):
         # The number of embeddings is the number of unique words in the jokes dataset
         # For the word embeddings, use glove
         self.emb = nn.Embedding(num_embeddings=len(self.word_map), 
-                    embedding_dim=glove.vectors.shape[1]).to(self.device)
+                    embedding_dim=self.embed_dim).to(self.device)
         
-        self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
-        self.dropout = nn.Dropout(0.5)
+        self.rnn = nn.RNN(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, dropout=0.2, batch_first=True).to(self.device)
+        # torch.nn.init.xavier_uniform_(self.rnn.weight_ih_l0)
+        # torch.nn.init.xavier_uniform_(self.rnn.weight_hh_l0)
+        # torch.nn.init.zeros_(self.rnn.bias_ih_l0)
+        # torch.nn.init.zeros_(self.rnn.bias_hh_l0)
+
+        # self.dropout = nn.Dropout(0.2)
         self.fc = nn.Linear(self.hidden_size, len(self.word_map)).to(self.device)
 
         # self.act = nn.ReLU().to(self.device)
 
-    def forward(self, x):
+    def forward(self, x, prev_hidden):
         x = self.emb(x)
         # print(x)
         # exit()
-        out, (hidden, _) = self.rnn(x)
-        hidden = hidden[-1, :, :]
+        out, hidden = self.rnn(x, prev_hidden)
+        # print(hidden)
+        # print(hidden.shape)
+        # exit()
+        # hidden = hidden[-1, :, :]
 
-        out = self.fc(hidden)
+        # issue is that we're getting predictions for 5 words which are from our sequence length; we want only one prediction value...
+        # find max probability of the next word for the LAST WORD
+        # out = self.dropout(out)
+        out = self.fc(out)
+        # print(out)
+        # print(out.shape) # 541: Batch Size; 5: sequence length; 4624: vocab size from num_embeddings
+        # exit()
         
         # **Apply softmax to obtain probabilities**
-        probs = torch.nn.functional.softmax(out, dim=1)
+        probs = torch.nn.functional.softmax(out, dim=-1)
+        # print("Probs")
+        # print(probs)
+        # print(probs.shape)
+        next_word_probs = torch.index_select(probs, dim=1, index=torch.tensor([probs.size(1) - 1]))
+        # print("Last Array in Probs")
+        # print(next_word_probs)
+        # print(next_word_probs.shape)
+        # print(probs.size(0))
+        # print(probs.size(1))
+        # probs.reshape()
         
-        pred_indices = torch.argmax(probs, dim=1)  # Take the index of the word with the highest probability
+        pred_indices = torch.argmax(next_word_probs, dim=-1)  # Take the index of the word with the highest probability
+        # print(pred_indices)
+        # print(pred_indices.shape)
+        # exit()
         
         pred_indices = pred_indices.float()
+
+        # pred_indices = torch.FloatTensor(pred_indices.unsqueeze(1))
         
-        pred_indices = torch.FloatTensor(pred_indices.unsqueeze(1))
-        
-        return pred_indices
+        return pred_indices, hidden
 
     def train(self, X, y):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0003)
-        loss_function = nn.MSELoss().to(self.device)
+        loss_function = nn.SmoothL1Loss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
         num_batches = len(X) // self.batch_size    # floor division
         
+        hidden = torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(self.device)
+
         for epoch in range(self.max_epoch):
             for batch_idx in range(num_batches):
                 
@@ -76,17 +106,29 @@ class Method_Generation(method, nn.Module):
                 
                 X_batch = torch.LongTensor(X[start_idx:end_idx]) # numpy arr, strings of tokens
                 y_batch = torch.Tensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
-                
                 # print("x batch: ", X_batch)
                 # print("x batch shape: ", X_batch.shape)
                 # exit()
-                y_pred = self.forward(X_batch)
+                optimizer.zero_grad()
+                y_pred, hidden = self.forward(X_batch.to(self.device), hidden.to(self.device))
+
+                # normalization of data
+                y_pred = y_pred / len(self.word_map)
+                y_batch = y_batch / len(self.word_map)
+                # print(y_pred.shape)
+                # print(y_batch.shape)
+                # exit()
                 y_pred.requires_grad_()
+
+                hidden = hidden.detach()
 
                 train_loss = loss_function(y_pred, y_batch)
                 # print("train loss: ", train_loss)
-                optimizer.zero_grad()
+                # optimizer.zero_grad()
                 train_loss.backward()
+
+                torch_utils.clip_grad_norm_(self.parameters(), max_norm=0.25)
+                
                 optimizer.step()
 
                 accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred}
@@ -108,6 +150,7 @@ class Method_Generation(method, nn.Module):
                 
                 torch.save(self.state_dict(), f"./saved_models/text_generation_{epoch+1}.pt")
                 print(f"Model saved at epoch {epoch+1}")
+            hidden = hidden.detach()
 
     def load_and_test(self, X):
         model_path = "saved_models/text_generation_25.pt"
@@ -139,6 +182,7 @@ class Method_Generation(method, nn.Module):
         print(tokens)
         output_ID = []
         seq_indices = []
+        hidden = torch.zeros(self.num_layers, 1, self.hidden_size).to(self.device)
 
         # map to index
         for t in tokens:
@@ -153,7 +197,7 @@ class Method_Generation(method, nn.Module):
         for i in range(word_gen_limit):
             seq_indices_tensor = torch.LongTensor(seq_indices).unsqueeze_(dim=0)
             
-            y_pred = self.forward(seq_indices_tensor)
+            y_pred, hidden = self.forward(seq_indices_tensor.to(self.device), hidden.to(self.device))
             
             seq_indices.append(y_pred.item())
             output_ID.append(y_pred.item())
