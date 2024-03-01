@@ -15,7 +15,7 @@ class Method_text_classification(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     load_model = False
-    max_epoch = 35
+    max_epoch = 25
     learning_rate = 0.005
     # 1, 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250, 500, 625, 1000, 1250, 2500, 3125, 5000, 6250, 12500, 25000
     batch_size = 500    # must be a factor of 25000 because of integer division
@@ -141,7 +141,7 @@ class Method_text_classification(method, nn.Module):
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
         
             # Every 5 epochs, print training plot and save model
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % 5 == 0:
                 # Every epoch, print training plot and save model
                 plt.plot(epochs, losses, label='Training Loss')
                 plt.xlabel('Epoch')
@@ -155,7 +155,7 @@ class Method_text_classification(method, nn.Module):
                 print(f"Model saved at epoch {epoch+1}")
             
     def load_and_test(self, X):
-        model_path = "saved_models/text_classification_25.pt"
+        model_path = "saved_models/text_classification_15.pt"
         self.load_state_dict(torch.load(model_path))
         print("loaded in model")
         
