@@ -4,7 +4,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchtext
-glove = torchtext.vocab.GloVe(name="6B", dim=300)
+glove = torchtext.vocab.GloVe(name="6B", dim=200)
 import torch
 from torch import nn
 import numpy as np
@@ -15,16 +15,16 @@ class Method_text_classification(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     load_model = False
-    max_epoch = 15
-    learning_rate = 0.01
+    max_epoch = 20
+    learning_rate = 0.005
     # 1, 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250, 500, 625, 1000, 1250, 2500, 3125, 5000, 6250, 12500, 25000
     batch_size = 500    # must be a factor of 25000 because of integer division
-    embed_dim = 300    # must be the same as the glove dim
+    embed_dim = 200    # must be the same as the glove dim
     hidden_size = 128
     num_layers = 2
     
     # going to change hidden size, num layers, and embed dim -> if overfitting, change weight decay and dropout
-    L = 151 # 75th percentile of length of reviews = 151
+    L = 400 # 75th percentile of length of reviews = 151
     GLOVE_FILE = os.path.join(".vector_cache", f"glove.6B.{embed_dim}d.txt")
     average_word_embed = []
 
@@ -46,8 +46,8 @@ class Method_text_classification(method, nn.Module):
         self.emb = nn.Embedding(num_embeddings=len(glove.stoi), 
                         embedding_dim=glove.vectors.shape[1]).to(self.device)
 
-        self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, dropout=0.6, num_layers=self.num_layers, batch_first=True).to(self.device)
-        self.dropout = nn.Dropout(0.6)
+        self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, dropout=0.4, num_layers=self.num_layers, batch_first=True).to(self.device)
+        self.dropout = nn.Dropout(0.4)
         self.fc = nn.Linear(self.hidden_size*self.L, num_classes).to(self.device)
         self.act = nn.Sigmoid().to(self.device)
         self.batchNorm = nn.BatchNorm1d(self.hidden_size*self.L).to(self.device)
@@ -71,7 +71,7 @@ class Method_text_classification(method, nn.Module):
 
     def train(self, X, y):
         self.to(self.device)
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.001)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.005)
         loss_function = nn.BCELoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
