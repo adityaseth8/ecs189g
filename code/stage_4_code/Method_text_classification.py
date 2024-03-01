@@ -15,7 +15,7 @@ class Method_text_classification(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     load_model = False
-    max_epoch = 20
+    max_epoch = 35
     learning_rate = 0.005
     # 1, 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250, 500, 625, 1000, 1250, 2500, 3125, 5000, 6250, 12500, 25000
     batch_size = 500    # must be a factor of 25000 because of integer division
