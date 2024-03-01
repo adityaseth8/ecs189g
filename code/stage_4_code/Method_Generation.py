@@ -27,7 +27,7 @@ class Method_Generation(method, nn.Module):
         nn.Module.__init__(self)
         
         self.word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
-        self.word_map = self.word_map.sample(frac=1) # shuffle indexes
+        # self.word_map = self.word_map.sample(frac=1) # shuffle indexes
         
         # The number of embeddings is the number of unique words in the jokes dataset
         # For the word embeddings, use glove
@@ -35,7 +35,7 @@ class Method_Generation(method, nn.Module):
                     embedding_dim=glove.vectors.shape[1]).to(self.device)
         
         self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
-        self.dropout = nn.Dropout(0.35)
+        self.dropout = nn.Dropout(0.5)
         self.fc = nn.Linear(self.hidden_size, len(self.word_map)).to(self.device)
 
         # self.act = nn.ReLU().to(self.device)
@@ -47,43 +47,27 @@ class Method_Generation(method, nn.Module):
         out, (hidden, _) = self.rnn(x)
         hidden = hidden[-1, :, :]
 
-        # print(hidden.shape)
-        # exit()
-        # hidden = self.dropout(hidden)
         out = self.fc(hidden)
-        
-        # print(out.shape)
         
         # **Apply softmax to obtain probabilities**
         probs = torch.nn.functional.softmax(out, dim=1)
         
-        # print(probs)
-        # print(probs.shape)
         pred_indices = torch.argmax(probs, dim=1)  # Take the index of the word with the highest probability
         
-        # print(pred_indices)
-        # print(pred_indices.shape)
         pred_indices = pred_indices.float()
-        # predicted_words = [glove.itos[index] for index in probs]  # Get the corresponding words
         
-        # print(predicted_words)
         pred_indices = torch.FloatTensor(pred_indices.unsqueeze(1))
-        # print(pred_indices.shape)
-        # exit()
         
         return pred_indices
 
     def train(self, X, y):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0003)
         loss_function = nn.MSELoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
         num_batches = len(X) // self.batch_size    # floor division
         
-        # print(X[0])
-        # print(y[0])
-        # exit()
         for epoch in range(self.max_epoch):
             for batch_idx in range(num_batches):
                 

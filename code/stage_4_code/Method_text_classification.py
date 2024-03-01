@@ -4,7 +4,7 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchtext
-glove = torchtext.vocab.GloVe(name="6B", dim=100)
+glove = torchtext.vocab.GloVe(name="6B", dim=300)
 import torch
 from torch import nn
 import numpy as np
@@ -15,11 +15,11 @@ class Method_text_classification(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     load_model = False
-    max_epoch = 1
-    learning_rate = 1e-4
+    max_epoch = 15
+    learning_rate = 0.01
     # 1, 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250, 500, 625, 1000, 1250, 2500, 3125, 5000, 6250, 12500, 25000
-    batch_size = 50    # must be a factor of 25000 because of integer division
-    embed_dim = 100    # must be the same as the glove dim
+    batch_size = 500    # must be a factor of 25000 because of integer division
+    embed_dim = 300    # must be the same as the glove dim
     hidden_size = 128
     num_layers = 2
     
@@ -31,33 +31,6 @@ class Method_text_classification(method, nn.Module):
     def __init__(self, mName, mDescription, num_classes=1):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
-        
-        # Handling out of vocab words: 
-        # Source: https://stackoverflow.com/questions/49239941/what-is-unk-in-the-pretrained-glove-vector-files-e-g-glove-6b-50d-txt
-        # Read in average word embedding
-        
-        # Get number of vectors and hidden dim
-        # with open(self.GLOVE_FILE, 'r', encoding='utf-8') as f:
-        #     lines = f.readlines()
-
-        # n_vec = len(lines)
-        # hidden_dim = len(lines[0].split(' ')) - 1
-
-        # vecs = np.zeros((n_vec, hidden_dim), dtype=np.float32)
-
-        # for i, line in enumerate(lines):
-        #     vecs[i] = np.array([float(n) for n in line.split(' ')[1:]], dtype=np.float32)
-
-        # average_vec = np.mean(vecs, axis=0)
-        # print(average_vec)
-        # # exit()
-        
-        # with open(f"./data/stage_4_data/text_classification/average_word_embed{self.embed_dim}.txt", "w") as f:
-        #     for i in range(len(average_vec)):
-        #         f.write(str(average_vec[i]))
-        #         f.write("\n")
-            
-        # exit()
         
         with open(f"./data/stage_4_data/text_classification/average_word_embed{self.embed_dim}.txt", "r") as f:
             lines = f.readlines()
@@ -73,34 +46,37 @@ class Method_text_classification(method, nn.Module):
         self.emb = nn.Embedding(num_embeddings=len(glove.stoi), 
                         embedding_dim=glove.vectors.shape[1]).to(self.device)
 
-        self.rnn = nn.RNN(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
-        self.dropout = nn.Dropout(0.3)
-        self.fc = nn.Linear(self.hidden_size, num_classes).to(self.device)
+        self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, dropout=0.6, num_layers=self.num_layers, batch_first=True).to(self.device)
+        self.dropout = nn.Dropout(0.6)
+        self.fc = nn.Linear(self.hidden_size*self.L, num_classes).to(self.device)
         self.act = nn.Sigmoid().to(self.device)
+        self.batchNorm = nn.BatchNorm1d(self.hidden_size*self.L).to(self.device)
         print("done init model")
 
     def forward(self, x):
         # Forward propagate the RNN
-        out, hidden = self.rnn(x)           # RNN or GRU
-        # out, (hidden, _) = self.rnn(x)    # LSTM
-        # print(hidden.shape)
-        hidden = hidden[-1, :, :]
-        # hidden = self.dropout(hidden)
-        # print(hidden.shape)
-
-        # Pass the output of the last time step to the classifier
-        out = self.fc(hidden)
+        # out, hidden = self.rnn(x)           # RNN or GRU
+        out, (hidden, _) = self.rnn(x)    # LSTM
+        # print(out.shape)
+        out = out.reshape(out.size(0), -1)
+        # print(out.shape)
+        out = self.batchNorm(out)
+        # print(out.shape)
+        out = self.dropout(out)
+    
+        out = self.fc(out)
         out = self.act(out)
 
         return out
 
     def train(self, X, y):
         self.to(self.device)
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0001)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.001)
         loss_function = nn.BCELoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
+        clip = 5
 
         num_batches = len(X) // self.batch_size    # floor division
         for epoch in range(self.max_epoch):
@@ -154,6 +130,7 @@ class Method_text_classification(method, nn.Module):
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
+                nn.utils.clip_grad_norm_(self.parameters(), clip)
                 optimizer.step()
 
                 accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred}
@@ -164,7 +141,7 @@ class Method_text_classification(method, nn.Module):
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
         
             # Every 5 epochs, print training plot and save model
-            if (epoch + 1) % 1 == 0:
+            if (epoch + 1) % 10 == 0:
                 # Every epoch, print training plot and save model
                 plt.plot(epochs, losses, label='Training Loss')
                 plt.xlabel('Epoch')
@@ -178,7 +155,7 @@ class Method_text_classification(method, nn.Module):
                 print(f"Model saved at epoch {epoch+1}")
             
     def load_and_test(self, X):
-        model_path = "saved_models/text_classification_30.pt"
+        model_path = "saved_models/text_classification_25.pt"
         self.load_state_dict(torch.load(model_path))
         print("loaded in model")
         
@@ -226,7 +203,7 @@ class Method_text_classification(method, nn.Module):
             X_batch = self.emb(X_batch_indices).to(self.device)
             
             y_pred_batch = self.forward(X_batch)
-            pred_y = y_pred_batch.max(1)[1].cpu().tolist()  # Move back to CPU for list conversion
+            pred_y = y_pred_batch.cpu().tolist()  # Move back to CPU for list conversion
             all_pred_y.extend(pred_y)
 
         return torch.tensor(all_pred_y)  # Combine predictions from all batches
