@@ -14,10 +14,10 @@ class Method_Generation(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
-    max_epoch = 25
-    learning_rate = 1e-3
-    batch_size = 1623 # must be factor of 1623 (1, 3, 541, 1623)
-    embed_dim = 256
+    max_epoch = 20
+    learning_rate = 1e-2
+    batch_size = 541 # must be factor of 1623 (1, 3, 541, 1623)
+    embed_dim = 128
     hidden_size = 256
     num_layers = 2
     
@@ -35,68 +35,49 @@ class Method_Generation(method, nn.Module):
         self.emb = nn.Embedding(num_embeddings=len(self.word_map), 
                     embedding_dim=self.embed_dim).to(self.device)
         
-        self.rnn = nn.GRU(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, dropout=0.2, batch_first=True).to(self.device)
-        # torch.nn.init.xavier_uniform_(self.rnn.weight_ih_l0)
-        # torch.nn.init.xavier_uniform_(self.rnn.weight_hh_l0)
-        # torch.nn.init.zeros_(self.rnn.bias_ih_l0)
-        # torch.nn.init.zeros_(self.rnn.bias_hh_l0)
+        self.rnn = nn.GRU(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
 
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.4)
         self.fc = nn.Linear(self.hidden_size, len(self.word_map)).to(self.device)
 
         # self.act = nn.ReLU().to(self.device)
 
     def forward(self, x, prev_hidden):
         x = self.emb(x)
-        # print(x)
-        # exit()
+        # print(x.shape)
+        # print(prev_hidden.shape)
         out, hidden = self.rnn(x, prev_hidden)
-        # print(hidden)
-        # print(hidden.shape)
-        # exit()
         # hidden = hidden[-1, :, :]
 
-        # issue is that we're getting predictions for 5 words which are from our sequence length; we want only one prediction value...
-        # find max probability of the next word for the LAST WORD
-        out = self.dropout(out)
+        # out = self.dropout(out)
         out = self.fc(out)
         # print(out)
         # print(out.shape) # 541: Batch Size; 5: sequence length; 4624: vocab size from num_embeddings
-        # exit()
         
         # **Apply softmax to obtain probabilities**
         probs = torch.nn.functional.softmax(out, dim=-1)
-        # print("Probs")
-        # print(probs)
-        # print(probs.shape)
-        next_word_probs = torch.index_select(probs, dim=1, index=torch.tensor([probs.size(1) - 1]))
-        # print("Last Array in Probs")
-        # print(next_word_probs)
-        # print(next_word_probs.shape)
-        # print(probs.size(0))
-        # print(probs.size(1))
-        # probs.reshape()
         
+        next_word_probs = torch.index_select(probs, dim=1, index=torch.tensor([probs.size(1) - 1]))
+                
         pred_indices = torch.argmax(next_word_probs, dim=-1)  # Take the index of the word with the highest probability
-        # print(pred_indices)
-        # print(pred_indices.shape)
-        # exit()
         
         pred_indices = pred_indices.float()
-
-        # pred_indices = torch.FloatTensor(pred_indices.unsqueeze(1))
         
         return pred_indices, hidden
 
     def train(self, X, y):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0003)
-        loss_function = nn.SmoothL1Loss().to(self.device)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        loss_function = nn.MSELoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
         num_batches = len(X) // self.batch_size    # floor division
+        clip = 2
         
         hidden = torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(self.device)
+
+        # hidden = (torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(self.device),
+        #     torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(self.device))
 
         for epoch in range(self.max_epoch):
             for batch_idx in range(num_batches):
@@ -110,7 +91,7 @@ class Method_Generation(method, nn.Module):
                 # print("x batch shape: ", X_batch.shape)
                 # exit()
                 optimizer.zero_grad()
-                y_pred, hidden = self.forward(X_batch.to(self.device), hidden.to(self.device))
+                y_pred, hidden = self.forward(X_batch.to(self.device), hidden)
 
                 # normalization of data
                 y_pred = y_pred / len(self.word_map)
@@ -127,9 +108,10 @@ class Method_Generation(method, nn.Module):
                 # optimizer.zero_grad()
                 train_loss.backward()
 
-                torch_utils.clip_grad_norm_(self.parameters(), max_norm=0.25)
                 
                 optimizer.step()
+                torch_utils.clip_grad_norm_(self.parameters(), clip)
+
 
                 accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred}
                 mse = accuracy_evaluator.mse_evaluate()
@@ -153,7 +135,7 @@ class Method_Generation(method, nn.Module):
             hidden = hidden.detach()
 
     def load_and_test(self, X):
-        model_path = "saved_models/text_generation_25.pt"
+        model_path = "saved_models/text_generation_50.pt"
         self.load_state_dict(torch.load(model_path))
         print("loaded in model")
         
@@ -219,7 +201,7 @@ class Method_Generation(method, nn.Module):
         # print generated joke
         print(result)
         result_str = ""
-        for i in range(5):
+        for i in range(3):
             result_str += str(tokens[i]) + " "
             
         for i in range(len(result)):
@@ -232,7 +214,7 @@ class Method_Generation(method, nn.Module):
 
     def run(self):
         print('method running...')
-        input = "What did the dog say?"
+        input = "What did the?"
         if not self.load_model:
             print('--start training...')
             self.train(self.data['train']['X'], self.data['train']['y'])

@@ -89,7 +89,7 @@ class Dataset_Loader(dataset):
         self.word_map["STOP"] = 0
         # df = pd.DataFrame(columns=['id', 'token'])
         # df = pd.concat([df, pd.DataFrame([{'id': 0, 'token': "STOP"}])], ignore_index=True)
-        sliding_window = 5       
+        sliding_window = 3       
         f = open(self.dataset_source_folder_path + file_name, 'r')
         next(f) # ignore line 1
         for line in f:
