@@ -13,15 +13,17 @@ class Method_Generation(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
-    word_map = pd.read_csv("./data/stage_4_data/short_jokes_vocab.csv")
+    word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
+    # print(len(word_map))
 
-    max_epoch = 75
+    max_epoch = 10
     learning_rate = 1e-3
-    batch_size = 4 # must be factor of 1623 (1, 3, 541, 1623)
+    batch_size = 530  # must be (1, 2, 3, 5, 6, 10, 13, 15, 26, 30, 39, 53, 65, 78, 106, 
+                     # 130, 159, 195, 265, 318, 390, 530, 689, 795, 1378, 1590, 2067, 
+                     # 3445, 4134, 6890, 10335, or 20670)
     embed_dim = 150
     hidden_size = len(word_map) # must be len(word_map)
     num_layers = 1
-    
     
     # The hidden size is less than the vocab size?
     
@@ -49,7 +51,7 @@ class Method_Generation(method, nn.Module):
         # torch.nn.init.zeros_(self.rnn.bias_ih_l0)
         # torch.nn.init.zeros_(self.rnn.bias_hh_l0)
 
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.2).to(self.device)
         self.fc = nn.Linear(self.hidden_size, len(self.word_map)).to(self.device)
 
     def init_hidden(self, batch_size):
@@ -151,6 +153,7 @@ class Method_Generation(method, nn.Module):
         
 
     def train(self, X, y):
+        self.to(self.device)
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0)
         loss_function = nn.CrossEntropyLoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
@@ -196,8 +199,8 @@ class Method_Generation(method, nn.Module):
                 # y_pred = y_pred / len(self.word_map)
                 # y_batch = y_batch / len(self.word_map)
                 # print(y_pred, y_batch)
-                print(y_pred.shape)
-                print(y_batch.shape)
+                # print(y_pred.shape)
+                # print(y_batch.shape)
                 
                 # exit()
                 y_pred.requires_grad_()
@@ -258,6 +261,7 @@ class Method_Generation(method, nn.Module):
         return cleanStr
     
     def test(self, input):
+        self.to(self.device)
         # print(self.word_map)
         # exit()
         batch_size = 1
