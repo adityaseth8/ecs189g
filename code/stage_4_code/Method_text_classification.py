@@ -48,7 +48,11 @@ class Method_text_classification(method, nn.Module):
 
         self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, dropout=0.4, num_layers=self.num_layers, batch_first=True).to(self.device)
         self.dropout = nn.Dropout(0.4)
-        self.fc = nn.Linear(self.hidden_size*self.L, num_classes).to(self.device)
+        # self.fc = nn.Linear(self.hidden_size*self.L, num_classes).to(self.device)
+        
+        self.fc1 = nn.Linear(self.hidden_size*self.L, (self.hidden_size*self.L) // 2 ).to(self.device)
+        self.fc2 = nn.Linear((self.hidden_size*self.L) // 2, num_classes).to(self.device)
+        
         self.act = nn.Sigmoid().to(self.device)
         self.batchNorm = nn.BatchNorm1d(self.hidden_size*self.L).to(self.device)
         print("done init model")
@@ -64,7 +68,11 @@ class Method_text_classification(method, nn.Module):
         # print(out.shape)
         out = self.dropout(out)
     
-        out = self.fc(out)
+        # out = self.fc(out)
+        
+        out = self.fc1(out)
+        out = self.fc2(out)
+        
         out = self.act(out)
 
         return out
