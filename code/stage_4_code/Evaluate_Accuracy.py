@@ -36,6 +36,7 @@ class Evaluate_Accuracy(evaluate):
                               torch.Tensor(self.data['pred_y']).cpu().detach().numpy())
     
     def mse_evaluate(self):
+        
         mse = mean_squared_error(self.data['true_y'].detach().numpy(), self.data['pred_y'].detach().numpy())
         return mse
         # print("Mean Squared Error: ", mse)

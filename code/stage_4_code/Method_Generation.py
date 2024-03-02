@@ -14,12 +14,12 @@ class Method_Generation(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
-    max_epoch = 100
+    max_epoch = 20
     learning_rate = 1e-3
     batch_size = 541 # must be factor of 1623 (1, 3, 541, 1623)
     embed_dim = 128
     hidden_size = 256
-    num_layers = 3
+    num_layers = 100
     
     # self.L = 20  No need to truncate i believe
 
@@ -43,6 +43,7 @@ class Method_Generation(method, nn.Module):
 
         # self.dropout = nn.Dropout(0.2)
         self.fc = nn.Linear(self.hidden_size, len(self.word_map)).to(self.device)
+        # self.batch_norm = nn.BatchNorm1d(5).to(self.device)
 
         # self.act = nn.ReLU().to(self.device)
 
@@ -59,7 +60,14 @@ class Method_Generation(method, nn.Module):
         # issue is that we're getting predictions for 5 words which are from our sequence length; we want only one prediction value...
         # find max probability of the next word for the LAST WORD
         # out = self.dropout(out)
-        out = self.fc(out)
+        # out = self.batch_norm(out)      # issue with dim (5 not 256)
+        # print("out shape: ", out.shape)
+        # print("hidden shape: ", hidden.shape)
+        # exit()
+        
+        # out = self.fc(out)
+        # out = self.fc(hidden)
+        
         # print(out)
         # print(out.shape) # 541: Batch Size; 5: sequence length; 4624: vocab size from num_embeddings
         # exit()
@@ -90,7 +98,7 @@ class Method_Generation(method, nn.Module):
 
     def train(self, X, y):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0003)
-        loss_function = nn.SmoothL1Loss().to(self.device)
+        loss_function = nn.MSELoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
@@ -109,7 +117,7 @@ class Method_Generation(method, nn.Module):
                 # print("x batch: ", X_batch)
                 # print("x batch shape: ", X_batch.shape)
                 # exit()
-                optimizer.zero_grad()
+                # optimizer.zero_grad()
                 y_pred, hidden = self.forward(X_batch.to(self.device), hidden.to(self.device))
 
                 # normalization of data
@@ -124,10 +132,10 @@ class Method_Generation(method, nn.Module):
 
                 train_loss = loss_function(y_pred, y_batch)
                 # print("train loss: ", train_loss)
-                # optimizer.zero_grad()
+                optimizer.zero_grad()
                 train_loss.backward()
 
-                torch_utils.clip_grad_norm_(self.parameters(), max_norm=0.25)
+                # torch_utils.clip_grad_norm_(self.parameters(), max_norm=0.25)
                 
                 optimizer.step()
 

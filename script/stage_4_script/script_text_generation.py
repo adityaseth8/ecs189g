@@ -18,7 +18,9 @@ if 1:
     # ---- objection initialization section ---------------
     data_obj = Dataset_Loader('train', '')
     data_obj.dataset_source_folder_path = './data/stage_4_data/'
-    data_obj.dataset_train_file_name = 'jokes_data'
+    # data_obj.dataset_train_file_name = 'jokes_data'
+    data_obj.dataset_train_file_name = 'short_jokes_data'
+    
 
     method_obj = Method_Generation('RNN text generation', '')
 

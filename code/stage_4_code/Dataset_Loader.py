@@ -35,17 +35,42 @@ class Dataset_Loader(dataset):
                 self.average_word_embed.append(np.float32(line))
 
         # Create a new word in the vocab with the average word embedding
-        glove.stoi["unk_token"] = len(glove.stoi)
-        glove.itos.append("unk_token")
-        glove.vectors = np.vstack([glove.vectors, self.average_word_embed])  # Append the new embedding to the existing embeddings
+        if not self.text_generation:
+            glove.stoi["unk_token"] = len(glove.stoi)
+            glove.itos.append("unk_token")
+            glove.vectors = np.vstack([glove.vectors, self.average_word_embed])  # Append the new embedding to the existing embeddings
         
+        # print(len(glove))
         # For text generation, create the stop token in the vocab 
         # Let the word embedding of the stop token to be a vector of 0s or the avg word embed?
-        if self.text_generation:
-            glove.stoi["stop_token"] = len(glove.stoi)
-            glove.itos.append("stop_token")
-            stop_token = np.ones(self.embed_dim)
-            glove.vectors = np.vstack([glove.vectors, stop_token])
+        # if self.text_generation:
+        #     glove.stoi["stop_token"] = len(glove.stoi)
+        #     glove.itos.append("stop_token")
+        #     stop_token = np.ones(self.embed_dim)       # word embedding of ones for the stop token
+        #     glove.vectors = np.vstack([glove.vectors, stop_token])
+            
+        #     # Add tokens from the joke dataset to the torch dataset
+        #     f = open("data/stage_4_data/jokes_vocab.csv", 'r')
+        #     next(f) # ignore line 1
+        #     for line in f:
+        #         line = line.strip("\n")
+        #         joke = line.split(",", 1)[1]
+                
+        #         tokens = joke.split(" ")
+
+        #         # remove punctuation
+        #         tokens = [self.clean_string(t).lower() for t in tokens]
+        #         token = tokens[0]
+                
+        #         if token not in glove:
+        #             glove.stoi[f"{token}"] = len(glove.stoi)
+        #             glove.itos.append(f"{token}")
+        #             token_embed = np.zeros(self.embed_dim)
+        #             glove.vectors = np.vstack([glove.vectors, token_embed])
+
+        # print(len(glove))
+        # exit()
+        
             # print(glove.stoi["stop_token"])
             # print(stop_token)
             # print(len(stop_token))
@@ -156,7 +181,7 @@ class Dataset_Loader(dataset):
     def load(self):
         print('loading data...')
         train_features, train_labels, test_features, test_labels = None, None, None, None
-        if self.dataset_train_file_name == "jokes_data":
+        if self.dataset_train_file_name == "jokes_data" or self.dataset_train_file_name == "short_jokes_data":
             X, y = self.parse_jokes(self.dataset_train_file_name)
             train_features, train_labels, test_features, test_labels = X, y, None, None
             # train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.2, shuffle=False)
