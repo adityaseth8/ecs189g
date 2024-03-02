@@ -87,6 +87,8 @@ class Dataset_Loader(dataset):
         
         # let the stop token be the 0th index
         self.word_map["STOP"] = 0
+        # df = pd.DataFrame(columns=['id', 'token'])
+        # df = pd.concat([df, pd.DataFrame([{'id': 0, 'token': "STOP"}])], ignore_index=True)
         sliding_window = 5       
         f = open(self.dataset_source_folder_path + file_name, 'r')
         next(f) # ignore line 1
@@ -103,8 +105,9 @@ class Dataset_Loader(dataset):
             # keep track of unique word mapping
             for token in tokens:
                 if token not in self.word_map:
+                    # df = pd.concat([df, pd.DataFrame([{'id': len(self.word_map), 'token': token}])], ignore_index=True)
                     self.word_map[token] = len(self.word_map)
-                    
+
             # print(self.word_map)
             # exit()
              
@@ -141,6 +144,9 @@ class Dataset_Loader(dataset):
                 
         f.close()
         
+        # df.to_csv("./data/stage_4_data/jokes_vocab.csv", index_label=False, index=False)
+        # exit()
+        
         # print("X\n", X, "followed by\n", y)
         # print(len(X))
         # print(len(y))
@@ -152,7 +158,8 @@ class Dataset_Loader(dataset):
         train_features, train_labels, test_features, test_labels = None, None, None, None
         if self.dataset_train_file_name == "jokes_data":
             X, y = self.parse_jokes(self.dataset_train_file_name)
-            train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.2, shuffle=False)
+            train_features, train_labels, test_features, test_labels = X, y, None, None
+            # train_features, test_features, train_labels, test_labels = train_test_split(X, y, test_size=0.2, shuffle=False)
         else:
             train_features, train_labels = self.parse(self.dataset_train_file_name)
             test_features, test_labels = self.parse(self.dataset_test_file_name)
