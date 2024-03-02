@@ -11,13 +11,13 @@ import pandas as pd
 class Method_Generation(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    load_model = True
+    load_model = False
 
     word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
 
-    max_epoch = 1
+    max_epoch = 25
     learning_rate = 1e-3
-    batch_size = 530  # must be (1, 2, 3, 5, 6, 10, 13, 15, 26, 30, 39, 53, 65, 78, 106, 
+    batch_size = 390  # must be (1, 2, 3, 5, 6, 10, 13, 15, 26, 30, 39, 53, 65, 78, 106, 
                      # 130, 159, 195, 265, 318, 390, 530, 689, 795, 1378, 1590, 2067, 
                      # 3445, 4134, 6890, 10335, or 20670)
     embed_dim = 150
@@ -59,11 +59,11 @@ class Method_Generation(method, nn.Module):
 
     def forward(self, x, hidden):
         batch_size = x.size(0)
-        x = x.long()
         
         embed = self.emb(x)  # error when in test call
         out, hidden = self.rnn(embed, hidden)   # LSTM
         out = out.contiguous().view(-1, self.hidden_size)
+        out = self.dropout(out)
         out = self.fc(out)  # no change in out shape
         out = out.view(batch_size, -1, len(self.word_map))
         out = out[:, -1, :]
@@ -109,9 +109,9 @@ class Method_Generation(method, nn.Module):
                 # normalization of data
                 # y_pred = y_pred / len(self.word_map)
                 # y_batch = y_batch / len(self.word_map)
-                print(y_pred, y_batch)
-                print(y_pred.shape)
-                print(y_batch.shape)
+                # print(y_pred, y_batch)
+                # print(y_pred.shape)
+                # print(y_batch.shape)
                 
                 # exit()
                 y_pred.requires_grad_()
@@ -199,7 +199,7 @@ class Method_Generation(method, nn.Module):
             # print(idx)
             seq_indices.append(idx)
             
-        print("seq indices: ", seq_indices)
+        # print("seq indices: ", seq_indices)
         # print(len(seq_indices))
         # exit()
         
@@ -207,41 +207,46 @@ class Method_Generation(method, nn.Module):
         
         for i in range(word_gen_limit):
             seq_indices_tensor = torch.LongTensor(seq_indices).unsqueeze_(dim=0)
-            print("seq idx tensor shape: ", seq_indices_tensor.shape)
+            # print("seq idx tensor shape: ", seq_indices_tensor.shape)
             # exit()
-            print("test forward")
+            # print("test forward")
             y_pred, hidden = self.forward(seq_indices_tensor.to(self.device), hidden)
             
             # **Apply softmax to obtain probabilities**
             probs = torch.nn.functional.softmax(y_pred, dim=-1).data
-            print("Probs")
-            print(probs)
-            print(probs.shape)
+            # print("Probs")
+            # print(probs)
+            # print(probs.shape)
             # exit()
             
-            top_k = 5
-            probs, top_i = probs.topk(top_k)
-            top_i = top_i.cpu().numpy().squeeze()
+            # # use top-k sampling to randomly select the top-k indices with the highest probability
+            # top_k = 5
+            # probs, top_i = probs.topk(top_k)
+            # top_i = top_i.cpu().numpy().squeeze()
             
-            # select the likely next word index with some element of randomness
-            probs = probs.cpu().numpy().squeeze()
-            word_i = np.random.choice(top_i, p = probs / probs.sum())
+            # # select the likely next word index with some element of randomness
+            # probs = probs.cpu().numpy().squeeze()
+            # word_i = np.random.choice(top_i, p = probs / probs.sum())
+            
+            # Use argmax to pick the index with the highest probability
+            word_i = torch.argmax(probs, dim=-1).item()  # Take the index of the word with the highest probability
+            
             # pred_word_index = torch.argmax(probs, dim=-1)  # Take the index of the word with the highest probability
             # print("Pred Indices")
             # print(pred_word_index)
             # print(pred_word_index.shape)
             # exit()
             
-            print("predicted next token: ", word_i)
+            # print("predicted next token: ", word_i)
             
             seq_indices.append(word_i)
             output_ID.append(word_i)
             
             seq_indices = seq_indices[1:]
-            print("after seq index update: ", seq_indices)
+            # print("after seq index update: ", seq_indices)
             
             if word_i == 0:  # stop token
-                print("hit stop token")
+                # print("hit stop token")
                 break
                 
         # convert back to words

@@ -176,6 +176,12 @@ class Dataset_Loader(dataset):
         # print(len(X))
         # print(len(y))
         # exit()
+        # print(len(self.word_map))
+        
+        # print(pd.DataFrame(self.word_map, columns=["id", "token"]).head())
+        self.word_map["<unk>"] = len(self.word_map)
+        # df.to_csv("./data/stage_4_data/jokes_vocab.csv", index_label=False, index=False)
+
         return X, y
 
     def load(self):

@@ -35,14 +35,6 @@ class Evaluate_Accuracy(evaluate):
         return accuracy_score(torch.Tensor(self.data['true_y']).cpu().detach().numpy(), 
                               torch.Tensor(self.data['pred_y']).cpu().detach().numpy())
     
-    def mse_evaluate(self):
-        
-        mse = mean_squared_error(self.data['true_y'].detach().numpy(), self.data['pred_y'].detach().numpy())
-        return mse
-        # print("Mean Squared Error: ", mse)
-
-        # print("true y: ", self.data['true_y'])
-        # print("pred y: ", self.data['pred_y'])
-
-        # perhaps also print out corresponding y vals? glove[index].. issue is the y pred are continuous vals
-        
+    # def gen_evaluate(self):
+    #     return accuracy_score(torch.Tensor(self.data['true_y']).cpu().detach().numpy(), 
+    #                           torch.Tensor(self.data['pred_y']).cpu().detach().numpy())
