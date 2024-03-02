@@ -13,14 +13,14 @@ class Method_Generation(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
-    word_map = pd.read_csv("./data/stage_4_data/short_jokes_vocab.csv")
+    word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
 
-    max_epoch = 20
-    learning_rate = 2e-3
+    max_epoch = 100
+    learning_rate = 1e-3
     batch_size = 2 # must be factor of 1623 (1, 3, 541, 1623)
-    embed_dim = 100
+    embed_dim = 200
     hidden_size = len(word_map)   # must be <= length of vocab
-    num_layers = 4
+    num_layers = 2
     
     # The hidden size is less than the vocab size?
     
@@ -254,7 +254,7 @@ class Method_Generation(method, nn.Module):
     def test(self, input):
         # print(self.word_map)
         # exit()
-        word_gen_limit = 5
+        word_gen_limit = 10
         tokens = input.split(" ")
 
         # remove punctuation
@@ -298,17 +298,39 @@ class Method_Generation(method, nn.Module):
         # print(len(seq_indices))
         # exit()
         
+        hidden = self.init_hidden(1)
+        
         for i in range(word_gen_limit):
             seq_indices_tensor = torch.LongTensor(seq_indices).unsqueeze_(dim=0)
             print("seq idx tensor shape: ", seq_indices_tensor.shape)
             # exit()
             print("test forward")
-            y_pred = self.forward(seq_indices_tensor.to(self.device))
+            y_pred, hidden = self.forward(seq_indices_tensor.to(self.device), hidden)
             
-            print("predicted next token: ", y_pred.item())
-            # continue
-            seq_indices.append(int(y_pred.item()))
-            output_ID.append(int(y_pred.item()))
+            # **Apply softmax to obtain probabilities**
+            probs = torch.nn.functional.softmax(y_pred, dim=-1).data
+            print("Probs")
+            print(probs)
+            print(probs.shape)
+            # exit()
+            
+            top_k = 5
+            probs, top_i = probs.topk(top_k)
+            top_i = top_i.numpy().squeeze()
+            
+            # select the likely next word index with some element of randomness
+            probs = probs.numpy().squeeze()
+            word_i = np.random.choice(top_i, p = probs / probs.sum())
+            # pred_word_index = torch.argmax(probs, dim=-1)  # Take the index of the word with the highest probability
+            # print("Pred Indices")
+            # print(pred_word_index)
+            # print(pred_word_index.shape)
+            # exit()
+            
+            print("predicted next token: ", word_i)
+            
+            seq_indices.append(word_i)
+            output_ID.append(word_i)
             # print("appended: ", y_pred.item())
             # print(i)
             # print(seq_indices)
@@ -317,7 +339,7 @@ class Method_Generation(method, nn.Module):
             seq_indices = seq_indices[1:]
             print("after seq index update: ", seq_indices)
             
-            if y_pred.item() == 0:  # stop token
+            if word_i == 0:  # stop token
                 print("hit stop token")
                 break
                 
