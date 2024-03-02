@@ -5,6 +5,7 @@ Concrete Evaluate class for a specific evaluation metrics
 # Copyright (c) 2017-Current Jiawei Zhang <jiawei@ifmlab.org>
 # License: TBD
 
+import torch
 from code.base_class.evaluate import evaluate
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report
@@ -20,18 +21,20 @@ class Evaluate_Accuracy(evaluate):
 
         print('evaluating performance...')
 
-        true_y = self.data['true_y']
-        pred_y = self.data['pred_y']
-
-        if isinstance(true_y, torch.Tensor):
-            true_y = true_y.cpu().numpy()
-        if isinstance(pred_y, torch.Tensor):
-            pred_y = pred_y.cpu().numpy()
-
         # Print classification report
-        print(classification_report(true_y, pred_y, labels=labels))
 
-        return accuracy_score(true_y, pred_y)
+        # Force values of y pred to be 0 or 1 (negative or positive) sentiment
+        for i in range(len(self.data['pred_y'])):
+            if self.data['pred_y'][i] <= 0.5:
+                self.data['pred_y'][i] = 0
+            else:
+                self.data['pred_y'][i] = 1
+
+        print(classification_report(torch.Tensor(self.data['true_y']).cpu().detach().numpy(), 
+                                    torch.Tensor(self.data['pred_y']).cpu().detach().numpy(), labels=labels))
+
+        return accuracy_score(torch.Tensor(self.data['true_y']).cpu().detach().numpy(), 
+                              torch.Tensor(self.data['pred_y']).cpu().detach().numpy())
     
     def mse_evaluate(self):
         mse = mean_squared_error(self.data['true_y'].detach().numpy(), self.data['pred_y'].detach().numpy())

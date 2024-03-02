@@ -28,3 +28,7 @@ Install the following packages with pip if you do not have them already.
    - MNIST: `python -m script.stage_3_script.script_mnist`
    - CIFAR-10: `python -m script.stage_3_script.script_cifar`
    - ORL: `python -m script.stage_3_script.script_orl`
+
+## Stage 4 Terminal Shortcuts
+   - Classification: `python -m script.stage_4_script.script_text_classification`
+   - Generation: `python -m script.stage_4_script.script_text_generation`
