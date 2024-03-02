@@ -2,7 +2,6 @@ from code.base_class.method import method
 from code.stage_4_code.Evaluate_Accuracy import Evaluate_Accuracy
 import matplotlib.pyplot as plt
 import torchtext
-glove = torchtext.vocab.GloVe(name="6B", dim=50)
 import torch
 from torch import nn
 import torch.nn.utils as torch_utils
@@ -14,12 +13,16 @@ class Method_Generation(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
+    word_map = pd.read_csv("./data/stage_4_data/short_jokes_vocab.csv")
+
     max_epoch = 20
-    learning_rate = 1e-3
-    batch_size = 541 # must be factor of 1623 (1, 3, 541, 1623)
-    embed_dim = 128
-    hidden_size = 256
-    num_layers = 100
+    learning_rate = 2e-3
+    batch_size = 2 # must be factor of 1623 (1, 3, 541, 1623)
+    embed_dim = 100
+    hidden_size = len(word_map)   # must be <= length of vocab
+    num_layers = 4
+    
+    # The hidden size is less than the vocab size?
     
     # self.L = 20  No need to truncate i believe
 
@@ -27,7 +30,11 @@ class Method_Generation(method, nn.Module):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
         
-        self.word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
+        # self.
+        
+        # print(self.word_map)
+        # print(len(self.word_map))
+        # exit()
         # self.word_map = self.word_map.sample(frac=1) # shuffle indexes
         
         # The number of embeddings is the number of unique words in the jokes dataset
@@ -35,23 +42,66 @@ class Method_Generation(method, nn.Module):
         self.emb = nn.Embedding(num_embeddings=len(self.word_map), 
                     embedding_dim=self.embed_dim).to(self.device)
         
-        self.rnn = nn.RNN(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, dropout=0.2, batch_first=True).to(self.device)
+        self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, num_layers=self.num_layers, batch_first=True).to(self.device)
         # torch.nn.init.xavier_uniform_(self.rnn.weight_ih_l0)
         # torch.nn.init.xavier_uniform_(self.rnn.weight_hh_l0)
         # torch.nn.init.zeros_(self.rnn.bias_ih_l0)
         # torch.nn.init.zeros_(self.rnn.bias_hh_l0)
 
-        # self.dropout = nn.Dropout(0.2)
+        # self.dropout = nn.Dropout(0.5)
         self.fc = nn.Linear(self.hidden_size, len(self.word_map)).to(self.device)
-        # self.batch_norm = nn.BatchNorm1d(5).to(self.device)
 
-        # self.act = nn.ReLU().to(self.device)
+    def init_hidden(self, batch_size):
+        '''
+        Initialize the hidden state of an LSTM/GRU
+        :param batch_size: The batch_size of the hidden state
+        :return: hidden state of dims (n_layers, batch_size, hidden_dim)
+        '''
+        # create 2 new zero tensors of size n_layers * batch_size * hidden_dim
+        weights = next(self.parameters()).data
+        # if(True):
+        #     hidden = (weights.new(self.n_layers, batch_size, self.hidden_dim).zero_().cuda(), 
+        #              weights.new(self.n_layers, batch_size, self.hidden_dim).zero_().cuda())
+        # else:
+        hidden = (weights.new(self.num_layers, batch_size, self.hidden_size).zero_(),
+                    weights.new(self.num_layers, batch_size, self.hidden_size).zero_())
+        
+        # print(hidden)
+        # exit()
+        
+        # initialize hidden state with zero weights, and move to GPU if available
+        
+        return hidden
 
-    def forward(self, x, prev_hidden):
-        x = self.emb(x)
+    def forward(self, x, hidden):
+        x = x.long()
+        
+        print("x shape in forward: ", x.shape)
+        embed = self.emb(x)  # error when in test call
+        print("x after emb shape: ", x.shape)
         # print(x)
         # exit()
-        out, hidden = self.rnn(x, prev_hidden)
+        out, hidden = self.rnn(embed, hidden)   # RNN or GRU
+        # out, (hidden, _) = self.rnn(x)  # LSTM
+    
+        # print("b4 contiguous: ", out.shape)
+        # print(out)
+        # # out = out.contiguous().view(-1, self.hidden_size)
+        # print("after continguous: ", out.shape)
+        # print(out)
+        # exit()
+    
+        # return last batch
+        # print("b4 out reshape: ", out.shape)
+        out = out[:, -1, :]
+        # print("after out reshape: ", out.shape)
+        # print(out)
+        # exit()
+        
+        
+        # return one batch of output word scores and the hidden state
+        return out, hidden
+    
         # print(hidden)
         # print(hidden.shape)
         # exit()
@@ -64,75 +114,95 @@ class Method_Generation(method, nn.Module):
         # print("out shape: ", out.shape)
         # print("hidden shape: ", hidden.shape)
         # exit()
-        
         # out = self.fc(out)
         # out = self.fc(hidden)
-        
         # print(out)
         # print(out.shape) # 541: Batch Size; 5: sequence length; 4624: vocab size from num_embeddings
         # exit()
-        
         # **Apply softmax to obtain probabilities**
-        probs = torch.nn.functional.softmax(out, dim=-1)
+        # probs = torch.nn.functional.softmax(out, dim=-1)
         # print("Probs")
         # print(probs)
         # print(probs.shape)
-        next_word_probs = torch.index_select(probs, dim=1, index=torch.tensor([probs.size(1) - 1]))
+        # next_word_probs = torch.index_select(probs, dim=1, index=torch.tensor([probs.size(1) - 1]))
         # print("Last Array in Probs")
         # print(next_word_probs)
         # print(next_word_probs.shape)
         # print(probs.size(0))
         # print(probs.size(1))
         # probs.reshape()
+        # exit()
         
-        pred_indices = torch.argmax(next_word_probs, dim=-1)  # Take the index of the word with the highest probability
+        # pred_indices = torch.argmax(next_word_probs, dim=-1)  # Take the index of the word with the highest probability
+        # print("Pred Indices")
         # print(pred_indices)
         # print(pred_indices.shape)
         # exit()
         
-        pred_indices = pred_indices.float()
-
+        # pred_indices = pred_indices.float()
         # pred_indices = torch.FloatTensor(pred_indices.unsqueeze(1))
+        # return pred_indices
         
-        return pred_indices, hidden
 
     def train(self, X, y):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0003)
-        loss_function = nn.MSELoss().to(self.device)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0)
+        loss_function = nn.CrossEntropyLoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
+        print("length of X: ", len(X))
         num_batches = len(X) // self.batch_size    # floor division
+        print("num batches: ", num_batches)
+        # exit()
         
-        hidden = torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(self.device)
+        # hidden = torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(self.device)
 
         for epoch in range(self.max_epoch):
+            hidden = self.init_hidden(self.batch_size)
             for batch_idx in range(num_batches):
-                
                 start_idx = batch_idx * self.batch_size
                 end_idx = (batch_idx + 1) * self.batch_size
                 
-                X_batch = torch.LongTensor(X[start_idx:end_idx]) # numpy arr, strings of tokens
-                y_batch = torch.Tensor(y[start_idx:end_idx])    # to match data type as X batch (long tensor)
+                X_batch = torch.LongTensor(X[start_idx:end_idx]).to(self.device) # numpy arr, strings of tokens
+                y_batch = torch.Tensor(y[start_idx:end_idx]).to(self.device).squeeze(dim=-1)    # to match data type as X batch (long tensor)
+                
+                
                 # print("x batch: ", X_batch)
                 # print("x batch shape: ", X_batch.shape)
+                # print("y batch shape: ", y_batch.shape)
+                # print(y_batch)
                 # exit()
                 # optimizer.zero_grad()
-                y_pred, hidden = self.forward(X_batch.to(self.device), hidden.to(self.device))
+                
+                
+                # creating variables for hidden state to prevent back-propagation
+                # of historical states 
+                h = tuple([each.data for each in hidden])
+                # print(h)
+                # exit()
+                
+                optimizer.zero_grad()
+                
+                y_pred, h = self.forward(X_batch, h)
+                
 
                 # normalization of data
-                y_pred = y_pred / len(self.word_map)
-                y_batch = y_batch / len(self.word_map)
-                # print(y_pred.shape)
-                # print(y_batch.shape)
+                # y_pred = y_pred / len(self.word_map)
+                # y_batch = y_batch / len(self.word_map)
+                # print(y_pred, y_batch)
+                print(y_pred.shape)
+                print(y_batch.shape)
+                
                 # exit()
                 y_pred.requires_grad_()
 
-                hidden = hidden.detach()
+                # hidden = hidden.detach()
 
+                y_batch = y_batch.long()
                 train_loss = loss_function(y_pred, y_batch)
                 # print("train loss: ", train_loss)
-                optimizer.zero_grad()
+                # exit()
+                # optimizer.zero_grad()
                 train_loss.backward()
 
                 # torch_utils.clip_grad_norm_(self.parameters(), max_norm=0.25)
@@ -140,17 +210,17 @@ class Method_Generation(method, nn.Module):
                 optimizer.step()
 
                 accuracy_evaluator.data = {'true_y': y_batch, 'pred_y': y_pred}
-                mse = accuracy_evaluator.mse_evaluate()
+                # mse = accuracy_evaluator.mse_evaluate()
                 current_loss = train_loss.item()
                 losses.append(current_loss)
                 epochs.append(epoch + batch_idx / num_batches)
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Loss:', current_loss)
         
             # Every 5 epochs, print training plot and save model
-            if (epoch + 1) % 5 == 0:
+            if (epoch + 1) % 1 == 0:
                 plt.plot(epochs, losses, label='Training Loss')
                 plt.xlabel('Epoch')
-                plt.ylabel('Cross Entropy Loss')
+                plt.ylabel('Mean Squared Error Loss')
                 plt.title('Training Convergence Plot')
                 # plt.legend()
                 plt.savefig(f"./result/stage_4_result/train_text_generation.png")
@@ -158,7 +228,7 @@ class Method_Generation(method, nn.Module):
                 
                 torch.save(self.state_dict(), f"./saved_models/text_generation_{epoch+1}.pt")
                 print(f"Model saved at epoch {epoch+1}")
-            hidden = hidden.detach()
+            # hidden = hidden.detach()
 
     def load_and_test(self, X):
         model_path = "saved_models/text_generation_25.pt"
@@ -182,36 +252,70 @@ class Method_Generation(method, nn.Module):
         return cleanStr
     
     def test(self, input):
-        word_gen_limit = 10
+        # print(self.word_map)
+        # exit()
+        word_gen_limit = 5
         tokens = input.split(" ")
 
         # remove punctuation
         tokens = [self.clean_string(t).lower() for t in tokens]
         print(tokens)
+        # exit()
         output_ID = []
         seq_indices = []
-        hidden = torch.zeros(self.num_layers, 1, self.hidden_size).to(self.device)
 
         # map to index
+        # get tokens from word map
+        word_map_tokens = self.word_map["token"].tolist()
+        
+        # out of vocab token
+        oov_token = "<unk>"
+        oov_idx = self.word_map.loc[self.word_map["token"] == oov_token, "id"].iloc[0]
+        
+        # Create a dictionary mapping tokens to their indices
+        # token_to_index = {token: index for index, token in enumerate(word_map_tokens)}
+        # print(token_to_index)
         for t in tokens:
-            if t in self.word_map["token"].values.tolist():
+            if t in word_map_tokens:    # token is in vocab
+                # Find the index (ID) of the token in the word_map
                 idx = self.word_map.loc[self.word_map["token"] == t, "id"].iloc[0]
             else:
-                idx = self.word_map.loc[self.word_map["token"] == "<unk>", "id"].iloc[0]
+                # Use the OOV token's ID
+                idx = oov_idx
+            # print(idx)
             seq_indices.append(idx)
+            
+            
+            # if t in self.word_map["token"].values.tolist():
+            #     idx = self.word_map.loc[self.word_map["token"] == t, "id"].iloc[0]
+            # else:
+            #     idx = self.word_map.loc[self.word_map["token"] == "<unk>", "id"].iloc[0]
+            # print(idx)
+            # seq_indices.append(idx)
+        # exit()
                 
-        # print(seq_indices)
+        print("seq indices: ", seq_indices)
+        # print(len(seq_indices))
+        # exit()
         
         for i in range(word_gen_limit):
             seq_indices_tensor = torch.LongTensor(seq_indices).unsqueeze_(dim=0)
+            print("seq idx tensor shape: ", seq_indices_tensor.shape)
+            # exit()
+            print("test forward")
+            y_pred = self.forward(seq_indices_tensor.to(self.device))
             
-            y_pred, hidden = self.forward(seq_indices_tensor.to(self.device), hidden.to(self.device))
-            
-            seq_indices.append(y_pred.item())
-            output_ID.append(y_pred.item())
+            print("predicted next token: ", y_pred.item())
+            # continue
+            seq_indices.append(int(y_pred.item()))
+            output_ID.append(int(y_pred.item()))
             # print("appended: ", y_pred.item())
+            # print(i)
+            # print(seq_indices)
+            # exit()
             
             seq_indices = seq_indices[1:]
+            print("after seq index update: ", seq_indices)
             
             if y_pred.item() == 0:  # stop token
                 print("hit stop token")
@@ -227,7 +331,7 @@ class Method_Generation(method, nn.Module):
         # print generated joke
         print(result)
         result_str = ""
-        for i in range(5):
+        for i in range(3):
             result_str += str(tokens[i]) + " "
             
         for i in range(len(result)):
@@ -240,7 +344,7 @@ class Method_Generation(method, nn.Module):
 
     def run(self):
         print('method running...')
-        input = "What did the dog say?"
+        input = "What did the"
         if not self.load_model:
             print('--start training...')
             self.train(self.data['train']['X'], self.data['train']['y'])
