@@ -13,14 +13,15 @@ class Method_Generation(method, nn.Module):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
 
-    word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
+    word_map = pd.read_csv("./data/stage_4_data/short_jokes_vocab.csv")
 
-    max_epoch = 100
+    max_epoch = 75
     learning_rate = 1e-3
-    batch_size = 2 # must be factor of 1623 (1, 3, 541, 1623)
-    embed_dim = 200
-    hidden_size = len(word_map)   # must be <= length of vocab
-    num_layers = 2
+    batch_size = 4 # must be factor of 1623 (1, 3, 541, 1623)
+    embed_dim = 150
+    hidden_size = len(word_map) # must be len(word_map)
+    num_layers = 1
+    
     
     # The hidden size is less than the vocab size?
     
@@ -48,7 +49,7 @@ class Method_Generation(method, nn.Module):
         # torch.nn.init.zeros_(self.rnn.bias_ih_l0)
         # torch.nn.init.zeros_(self.rnn.bias_hh_l0)
 
-        # self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(0.2)
         self.fc = nn.Linear(self.hidden_size, len(self.word_map)).to(self.device)
 
     def init_hidden(self, batch_size):
@@ -74,22 +75,27 @@ class Method_Generation(method, nn.Module):
         return hidden
 
     def forward(self, x, hidden):
+        batch_size = x.size(0)
         x = x.long()
         
-        print("x shape in forward: ", x.shape)
+        # print("x shape in forward: ", x.shape)
         embed = self.emb(x)  # error when in test call
-        print("x after emb shape: ", x.shape)
+        # print("x after emb shape: ", x.shape)
         # print(x)
         # exit()
-        out, hidden = self.rnn(embed, hidden)   # RNN or GRU
-        # out, (hidden, _) = self.rnn(x)  # LSTM
+        out, hidden = self.rnn(embed, hidden)   # LSTM
+        # out, (hidden, _) = self.rnn(embed, hidden)  # LSTM
     
         # print("b4 contiguous: ", out.shape)
         # print(out)
-        # # out = out.contiguous().view(-1, self.hidden_size)
+        out = out.contiguous().view(-1, self.hidden_size)
         # print("after continguous: ", out.shape)
         # print(out)
         # exit()
+        
+        out = self.fc(out)  # no change in out shape
+        
+        out = out.view(batch_size, -1, len(self.word_map))
     
         # return last batch
         # print("b4 out reshape: ", out.shape)
@@ -150,9 +156,9 @@ class Method_Generation(method, nn.Module):
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
         epochs = []  # Use epochs instead of batches for x-axis
-        print("length of X: ", len(X))
+        # print("length of X: ", len(X))
         num_batches = len(X) // self.batch_size    # floor division
-        print("num batches: ", num_batches)
+        # print("num batches: ", num_batches)
         # exit()
         
         # hidden = torch.zeros(self.num_layers, self.batch_size, self.hidden_size).to(self.device)
@@ -217,7 +223,7 @@ class Method_Generation(method, nn.Module):
                 print('Epoch:', epoch, 'Batch:', batch_idx, 'Loss:', current_loss)
         
             # Every 5 epochs, print training plot and save model
-            if (epoch + 1) % 1 == 0:
+            if (epoch + 1) % 5 == 0:
                 plt.plot(epochs, losses, label='Training Loss')
                 plt.xlabel('Epoch')
                 plt.ylabel('Mean Squared Error Loss')
@@ -254,6 +260,7 @@ class Method_Generation(method, nn.Module):
     def test(self, input):
         # print(self.word_map)
         # exit()
+        batch_size = 1
         word_gen_limit = 10
         tokens = input.split(" ")
 
@@ -298,7 +305,7 @@ class Method_Generation(method, nn.Module):
         # print(len(seq_indices))
         # exit()
         
-        hidden = self.init_hidden(1)
+        hidden = self.init_hidden(batch_size)    # batch size = 1
         
         for i in range(word_gen_limit):
             seq_indices_tensor = torch.LongTensor(seq_indices).unsqueeze_(dim=0)
@@ -366,7 +373,7 @@ class Method_Generation(method, nn.Module):
 
     def run(self):
         print('method running...')
-        input = "What did the"
+        input = "You better not"
         if not self.load_model:
             print('--start training...')
             self.train(self.data['train']['X'], self.data['train']['y'])
