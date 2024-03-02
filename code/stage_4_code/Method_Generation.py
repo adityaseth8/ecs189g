@@ -33,8 +33,6 @@ class Method_Generation(method, nn.Module):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
         
-        # self.
-        
         # print(self.word_map)
         # print(len(self.word_map))
         # exit()
@@ -175,14 +173,12 @@ class Method_Generation(method, nn.Module):
                 X_batch = torch.LongTensor(X[start_idx:end_idx]).to(self.device) # numpy arr, strings of tokens
                 y_batch = torch.Tensor(y[start_idx:end_idx]).to(self.device).squeeze(dim=-1)    # to match data type as X batch (long tensor)
                 
-                
                 # print("x batch: ", X_batch)
                 # print("x batch shape: ", X_batch.shape)
                 # print("y batch shape: ", y_batch.shape)
                 # print(y_batch)
                 # exit()
                 # optimizer.zero_grad()
-                
                 
                 # creating variables for hidden state to prevent back-propagation
                 # of historical states 
@@ -327,10 +323,11 @@ class Method_Generation(method, nn.Module):
             
             top_k = 5
             probs, top_i = probs.topk(top_k)
-            top_i = top_i.numpy().squeeze()
+            top_i = top_i.cpu().numpy().squeeze()
             
             # select the likely next word index with some element of randomness
-            probs = probs.numpy().squeeze()
+            probs = probs.cpu().numpy().squeeze()
+
             word_i = np.random.choice(top_i, p = probs / probs.sum())
             # pred_word_index = torch.argmax(probs, dim=-1)  # Take the index of the word with the highest probability
             # print("Pred Indices")
