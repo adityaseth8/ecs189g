@@ -21,8 +21,6 @@ class Evaluate_Accuracy(evaluate):
 
         print('evaluating performance...')
 
-        # Print classification report
-
         # Force values of y pred to be 0 or 1 (negative or positive) sentiment
         for i in range(len(self.data['pred_y'])):
             if self.data['pred_y'][i] <= 0.5:

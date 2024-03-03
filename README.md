@@ -9,6 +9,7 @@ Install the following packages with pip if you do not have them already.
 - torchvision (needed for stage 3)
 - matplotlib
 -  scikit-learn & scikit-image
+-  torchtext (needed for stage 4)
 
 ## Execution Instructions
 1. Open up a new terminal

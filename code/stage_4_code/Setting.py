@@ -7,14 +7,4 @@ class Setting(setting):
 
         # run MethodModule
         self.method.data = {'train': {'X': X_train, 'y': y_train}, 'test': {'X': X_test, 'y': y_test}}
-        learned_data = self.method.run()
-
-        # save raw dataModule
-        self.result.data = learned_data
-        self.result.save()
-
-        self.evaluate.data = learned_data
-
-        return self.evaluate.evaluate(), None
-
-
+        self.method.run()

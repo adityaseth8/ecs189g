@@ -22,8 +22,7 @@ class Method_text_classification(method, nn.Module):
     embed_dim = 200    # must be the same as the glove dim
     hidden_size = 128
     num_layers = 2
-    
-    # going to change hidden size, num layers, and embed dim -> if overfitting, change weight decay and dropout
+
     L = 400 # 75th percentile of length of reviews = 151
     GLOVE_FILE = os.path.join(".vector_cache", f"glove.6B.{embed_dim}d.txt")
     average_word_embed = []
@@ -48,7 +47,6 @@ class Method_text_classification(method, nn.Module):
 
         self.rnn = nn.LSTM(input_size=self.embed_dim, hidden_size=self.hidden_size, dropout=0.4, num_layers=self.num_layers, batch_first=True).to(self.device)
         self.dropout = nn.Dropout(0.4)
-        # self.fc = nn.Linear(self.hidden_size*self.L, num_classes).to(self.device)
         
         self.fc1 = nn.Linear(self.hidden_size*self.L, (self.hidden_size*self.L) // 2 ).to(self.device)
         self.fc2 = nn.Linear((self.hidden_size*self.L) // 2, num_classes).to(self.device)
@@ -61,15 +59,10 @@ class Method_text_classification(method, nn.Module):
         # Forward propagate the RNN
         # out, hidden = self.rnn(x)           # RNN or GRU
         out, (hidden, _) = self.rnn(x)    # LSTM
-        # print(out.shape)
         out = out.reshape(out.size(0), -1)
-        # print(out.shape)
         out = self.batchNorm(out)
-        # print(out.shape)
         out = self.dropout(out)
     
-        # out = self.fc(out)
-        
         out = self.fc1(out)
         out = self.fc2(out)
         
@@ -99,7 +92,7 @@ class Method_text_classification(method, nn.Module):
                 for seq in X_batch:
                     seq_indices = []
                     if len(seq) > self.L:
-                        # truncate, too long
+                        # truncate review, too long
                         seqArr = seq[:self.L]
                     else:
                         seqArr = seq
@@ -108,7 +101,6 @@ class Method_text_classification(method, nn.Module):
                         if word in glove.stoi:                      # Word is in vocab
                             seq_indices.append(glove.stoi[word])
                         else: # Out of vocab words are excluded     # If word is not in vocab, append unknown token
-                            # seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
                             seq_indices.append(glove.stoi["unk_token"])
                     
                     # Pad the sequence to the maximum length within the batch
@@ -121,20 +113,9 @@ class Method_text_classification(method, nn.Module):
                 # Look up embeddings
                 X_batch = self.emb(X_batch_indices).to(self.device)
                 
-                # print(X_batch)
-                # print(X_batch.shape)
                 y_pred = self.forward(X_batch)
-                # print(y_pred.dtype)
-                # print(y_pred)
-                # print(y_batch.dtype)
-                # exit()
-                # print("y pred", y_pred.shape)
-                # print("y_batch", y_batch.shape)
-                # print(y_pred)
-                # print(y_pred.shape)
-                # exit()
+                
                 y_pred = y_pred.squeeze(dim=1)
-                # print(y_pred.shape)
                 train_loss = loss_function(y_pred, y_batch)
                 optimizer.zero_grad()
                 train_loss.backward()
@@ -150,14 +131,11 @@ class Method_text_classification(method, nn.Module):
         
             # Every 5 epochs, print training plot and save model
             if (epoch + 1) % 5 == 0:
-                # Every epoch, print training plot and save model
                 plt.plot(epochs, losses, label='Training Loss')
                 plt.xlabel('Epoch')
                 plt.ylabel('Cross Entropy Loss')
                 plt.title('Training Convergence Plot')
-                # plt.legend()
                 plt.savefig(f"./result/stage_4_result/train_text_classification.png")
-                # plt.show()
                 
                 torch.save(self.state_dict(), f"./saved_models/text_classification_{epoch+1}.pt")
                 print(f"Model saved at epoch {epoch+1}")
@@ -188,7 +166,7 @@ class Method_text_classification(method, nn.Module):
             for seq in X_batch:
                 seq_indices = []
                 if len(seq) > self.L:
-                    # truncate, too long
+                    # truncate review, too long
                     seqArr = seq[:self.L]
                 else:
                     seqArr = seq
@@ -197,7 +175,6 @@ class Method_text_classification(method, nn.Module):
                     if word in glove.stoi:                      # Word is in vocab
                         seq_indices.append(glove.stoi[word])
                     else: # Out of vocab words are excluded     # If word is not in vocab, append unknown token
-                        # seq_indices.append(np.random.randint(0, len(glove.stoi))) # not in glove: insert random word
                         seq_indices.append(glove.stoi["unk_token"])
                 
                 # Pad the sequence to the maximum length within the batch
@@ -231,5 +208,3 @@ class Method_text_classification(method, nn.Module):
         accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
         accuracy_evaluator.data = {'true_y': self.data['test']['y'], 'pred_y': pred_y}
         accuracy_evaluator.evaluate()
-
-        return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
