@@ -40,6 +40,3 @@ class Evaluate_Accuracy(evaluate):
 
         print("true y: ", self.data['true_y'])
         print("pred y: ", self.data['pred_y'])
-
-        # perhaps also print out corresponding y vals? glove[index].. issue is the y pred are continuous vals
-        
