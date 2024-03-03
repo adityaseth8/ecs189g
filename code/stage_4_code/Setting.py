@@ -10,11 +10,11 @@ class Setting(setting):
         learned_data = self.method.run()
 
         # save raw dataModule
-        self.result.data = learned_data
-        self.result.save()
+        # self.result.data = learned_data
+        # self.result.save()
 
-        self.evaluate.data = learned_data
+        # self.evaluate.data = learned_data
 
-        return self.evaluate.evaluate(), None
+        # return self.evaluate.evaluate(), None
 
 
