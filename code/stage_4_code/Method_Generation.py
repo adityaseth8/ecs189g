@@ -15,14 +15,15 @@ class Method_Generation(method, nn.Module):
 
     word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
 
-    max_epoch = 25
-    learning_rate = 1e-3
-    batch_size = 390  # must be (1, 2, 3, 5, 6, 10, 13, 15, 26, 30, 39, 53, 65, 78, 106, 
+    max_epoch = 20
+    learning_rate = 1e-3     # 1e-3 = 0.001
+    batch_size = 130  # must be (1, 2, 3, 5, 6, 10, 13, 15, 26, 30, 39, 53, 65, 78, 106, 
                      # 130, 159, 195, 265, 318, 390, 530, 689, 795, 1378, 1590, 2067, 
                      # 3445, 4134, 6890, 10335, or 20670)
-    embed_dim = 150
-    hidden_size = len(word_map) # must be len(word_map)
-    num_layers = 1
+    embed_dim = 5012
+    # hidden_size = 1028 
+    hidden_size = len(word_map)
+    num_layers = 2
     result_list = []
     
     def __init__(self, mName, mDescription, num_classes=1):
@@ -123,7 +124,8 @@ class Method_Generation(method, nn.Module):
                 # optimizer.zero_grad()
                 train_loss.backward()
 
-                # torch_utils.clip_grad_norm_(self.parameters(), max_norm=0.25)
+                torch_utils.clip_grad_norm_(self.parameters(), max_norm=0.25)
+                # nn.utils.clip_grad_norm_(self.parameters(), 5)
                 
                 optimizer.step()
 
@@ -132,8 +134,9 @@ class Method_Generation(method, nn.Module):
                 current_loss = train_loss.item()
                 losses.append(current_loss)
                 epochs.append(epoch + batch_idx / num_batches)
-                print('Epoch:', epoch, 'Batch:', batch_idx, 'Loss:', current_loss)
+                # print('Epoch:', epoch, 'Batch:', batch_idx, 'Loss:', current_loss)
         
+            print('Epoch:', epoch, 'Loss:', current_loss)
             # Every 5 epochs, print training plot and save model
             if (epoch + 1) % 5 == 0:
                 plt.plot(epochs, losses, label='Training Loss')
@@ -146,7 +149,7 @@ class Method_Generation(method, nn.Module):
                 print(f"Model saved at epoch {epoch+1}")
 
     def load_and_test(self, X):
-        model_path = "saved_models/text_generation_25.pt"
+        model_path = "saved_models/text_generation_150.pt"
         if torch.cuda.is_available() is False:
             self.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         else:
@@ -171,7 +174,7 @@ class Method_Generation(method, nn.Module):
     
     def test(self, input):
         batch_size = 1
-        word_gen_limit = 10
+        word_gen_limit = 20
         tokens = input.split(" ")
 
         # remove punctuation
@@ -254,7 +257,7 @@ class Method_Generation(method, nn.Module):
         for idx in output_ID:
             if idx in self.word_map["id"].values.tolist():
                 word = self.word_map.loc[self.word_map["id"] == idx, "token"].iloc[0]
-            result.append(word)
+                result.append(word)
             
         # print generated joke
         print(result)
@@ -272,11 +275,26 @@ class Method_Generation(method, nn.Module):
     def run(self):
         print('method running...')
         inputs = [
+            "Knock knock who's"
             "We don't allow",
-            "Light say to",
             "A penguin walks",
             "How does one",
-            "Fall off a"
+            "I like my",
+            "Why did the",
+            "Why is he",
+            "What did the",
+            "I went for",
+            "What happened to",
+            "What kind of",
+            "Did you hear",
+            "What type of",
+            "I never buy",
+            "I farted on",
+            "What do you",
+            "Did you hear",
+            "What was wrong",
+            "Why was the",
+            "I hear that"
         ]
         
         if not self.load_model:
