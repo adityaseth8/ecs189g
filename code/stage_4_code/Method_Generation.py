@@ -1,11 +1,9 @@
 from code.base_class.method import method
 from code.stage_4_code.Evaluate_Accuracy import Evaluate_Accuracy
 import matplotlib.pyplot as plt
-import torchtext
 import torch
 from torch import nn
 import torch.nn.utils as torch_utils
-import numpy as np
 import pandas as pd
 
 class Method_Generation(method, nn.Module):
@@ -16,7 +14,7 @@ class Method_Generation(method, nn.Module):
     word_map = pd.read_csv("./data/stage_4_data/jokes_vocab.csv")
 
     max_epoch = 20
-    learning_rate = 1e-3     # 1e-3 = 0.001
+    learning_rate = 1e-3
     batch_size = 130  # must be (1, 2, 3, 5, 6, 10, 13, 15, 26, 30, 39, 53, 65, 78, 106, 
                     # 130, 159, 195, 265, 318, 390, 530, 689, 795, 1378, 1590, 2067, 
                     # 3445, 4134, 6890, 10335, or 20670)

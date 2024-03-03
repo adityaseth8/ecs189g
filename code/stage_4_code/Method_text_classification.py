@@ -1,7 +1,5 @@
 from code.base_class.method import method
 from code.stage_4_code.Evaluate_Accuracy import Evaluate_Accuracy
-from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchtext
 glove = torchtext.vocab.GloVe(name="6B", dim=200)
