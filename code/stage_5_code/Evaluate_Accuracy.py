@@ -13,8 +13,8 @@ from sklearn.metrics import classification_report
 class Evaluate_Accuracy(evaluate):
     data = None
     
-    def evaluate(self):
-        labels = [i for i in range(10)]
+    def evaluate(self, numClasses):
+        labels = [i for i in range(numClasses)]
 
         print('evaluating performance...')
 

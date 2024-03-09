@@ -6,6 +6,10 @@ from torch import nn
 import numpy as np
 import os
 import torch.nn.functional as F
+from torch.nn.parameter import Parameter
+from torch.nn.modules.module import Module
+from scipy.sparse import coo_matrix
+
 
 class Method_GNN(method, nn.Module):
     # If available, use the first GPU
@@ -22,9 +26,15 @@ class Method_GNN(method, nn.Module):
     def __init__(self, mName, mDescription):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
+        self.gc1 = GraphConvolution(self.numFeatures, self.hidden_size)
+        self.gc2 = GraphConvolution(self.hidden_size, self.numClasses)
+        self.dropout = nn.Dropout(0.2)
 
     def forward(self, x, adj):
-        pass
+        x = F.relu(self.gc1(x, adj))
+        # x = F.dropout(x, self.dropout, training=self.training)
+        x = self.gc2(x, adj)
+        return F.log_softmax(x, dim=1)
 
     def train(self, X, y, adj):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=0.0)
@@ -33,30 +43,35 @@ class Method_GNN(method, nn.Module):
         losses = []
         accuracies = []
         epochs = []  # Use epochs instead of batches for x-axis
-        num_batches = len(X) // self.batch_size    # floor division
-
+        train_len = len(X)
+        # num_batches = train_len // self.batch_size    # floor division
         for epoch in range(self.max_epoch):
-            hidden = self.init_hidden(self.batch_size)
-            for batch_idx in range(num_batches):
-                start_idx = batch_idx * self.batch_size
-                end_idx = (batch_idx + 1) * self.batch_size
+            # for batch_idx in range(num_batches):
+            #     start_idx = batch_idx * self.batch_size
+            #     end_idx = (batch_idx + 1) * self.batch_size
                 
-                X_batch = torch.LongTensor(np.array(X[start_idx:end_idx])).to(self.device)
-                y_batch = torch.LongTensor(np.array(y[start_idx:end_idx]).flatten()).to(self.device)
-
-                y_pred = self.forward(X.to(self.device), adj.to(self.device))  # do I need to filter adjacency matrix by train and test indices?
-                train_loss = loss_function(y_pred, y_batch)
-                optimizer.zero_grad()
-                train_loss.backward()
-                optimizer.step()
-
+                # X_batch = torch.Tensor(np.array(X[start_idx:end_idx])).to(self.device)
+                # y_batch = torch.Tensor(np.array(y[start_idx:end_idx]).flatten()).to(self.device)
                 
-                accuracy_evaluator.data = {'true_y': y_batch.cpu(), 'pred_y': y_pred.cpu().max(1)[1]}
-                accuracy = accuracy_evaluator.evaluate(self.numClasses)  # make sure to change arg for other two datasets
-                current_loss = train_loss.item()
-                losses.append(current_loss)
-                epochs.append(epoch + batch_idx / num_batches)  # Calculate epoch index for each batch
-                print('Epoch:', epoch, 'Batch:', batch_idx, 'Accuracy:', accuracy, 'Loss:', current_loss)
+                # print(train_len)  # 2166
+                # print(type(adj))
+                # print(adj.shape)
+                
+            y_pred = self.forward(X.to(self.device), adj)  # do I need to filter adjacency matrix by train and test indices?
+            print(y_pred.shape)
+            print(y.shape)
+            train_loss = loss_function(y_pred, y)
+            optimizer.zero_grad()
+            train_loss.backward()
+            optimizer.step()
+
+            
+            accuracy_evaluator.data = {'true_y': y.cpu(), 'pred_y': y_pred.cpu().max(1)[1]}
+            accuracy = accuracy_evaluator.evaluate(self.numClasses)  # make sure to change arg for other two datasets
+            current_loss = train_loss.item()
+            losses.append(current_loss)
+            epochs.append(epoch)  # Calculate epoch index for each batch
+            print('Epoch:', epoch, 'Accuracy:', accuracy, 'Loss:', current_loss)
 
         plt.plot(epochs, losses, label='Training Loss')
         plt.xlabel('Epoch')
@@ -90,10 +105,9 @@ class Method_GNN(method, nn.Module):
     def run(self):
         print('method running...')
         print('--start training...')
-        X_train, y_train = self.data['train']['X'], self.data['train']['y']
-        X_test, y_test = self.data['test']['X'], self.data['test']['y']
-        adj = self.data['graph']
-        self.train(X_train, y_train, adj)
+        X_train, y_train, adj_train = self.data['train']['X'], self.data['train']['y'], self.data['train']['adj']
+        X_test, y_test, adj_test = self.data['test']['X'], self.data['test']['y'], self.data['test']['adj']
+        self.train(X_train, y_train, adj_train)
         print('--start testing...')
         pred_y = self.test(X_test)
         print('--finish testing...')
@@ -104,3 +118,25 @@ class Method_GNN(method, nn.Module):
 
         return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
 
+class GraphConvolution(Module):
+    def __init__(self, in_features, out_hidden, bias=True):
+        super(GraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_hidden
+        self.weight = Parameter(torch.zeros(in_features, out_hidden))
+        if bias:
+            self.bias = Parameter(torch.ones(out_hidden))
+        else:
+            self.register_parameter('bias', None)
+
+    def forward(self, input, adj_m):
+        print(input.shape)  # 2166, 1433
+        print(self.weight.shape)   # 1433, 256 (hidden size)
+        support = torch.mm(input, self.weight) 
+        print(adj_m.shape)  # 2166, 256
+        print(support.shape)  # 2166, 2708
+        output = torch.spmm(adj_m, support)
+        if self.bias is not None:
+            return output + self.bias
+        else:
+            return output
