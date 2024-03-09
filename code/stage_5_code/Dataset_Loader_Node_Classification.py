@@ -64,20 +64,29 @@ class Dataset_Loader(dataset):
         labels = torch.LongTensor(np.where(onehot_labels)[1])
         adj = self.sparse_mx_to_torch_sparse_tensor(norm_adj)
 
+        num_classes, num_features = None, None
+
         # the following part, you can either put them into the setting class or you can leave them in the dataset loader
         # the following train, test, val index are just examples, sample the train, test according to project requirements
         if self.dataset_name == 'cora':
             idx_train = range(2166)    # 80/20 split    # range(140)
             idx_test = range(2166, 2708)         # range(200, 1200)
+            num_classes = 7
+            num_features = 1433
+
             # idx_val = range(1200, 1500)
         elif self.dataset_name == 'citeseer':
             idx_train = range(120)
             idx_test = range(200, 1200)
-            idx_val = range(1200, 1500)
+            # idx_val = range(1200, 1500)
+            num_classes = 6
+            num_features = 3703
         elif self.dataset_name == 'pubmed':
             idx_train = range(60)
             idx_test = range(6300, 7300)
             idx_val = range(6000, 6300)
+            num_classes = 3
+            num_features = 500
         #---- cora-small is a toy dataset I hand crafted for debugging purposes ---
         elif self.dataset_name == 'cora-small':
             idx_train = range(5)
@@ -92,6 +101,10 @@ class Dataset_Loader(dataset):
         train_x, train_y = features[idx_train], labels[idx_train]
         test_x, test_y = features[idx_test], labels[idx_test]
 
+        # get number of unique classes:
+        # len(np.unique(np.array(train_x)))
+        # num_classes = len(torch.unique(labels))
+         
         train_test_val_idx = {
             'idx_train' : idx_train,
             'idx_test'  : idx_test,
@@ -103,7 +116,9 @@ class Dataset_Loader(dataset):
             'y'     : labels,
             'utility': {
                 'A'             : adj,
-                'reverse_idx'   : reverse_idx_map
+                'reverse_idx'   : reverse_idx_map,
+                'num_classes'   : num_classes,
+                'num_features'  : num_features
             }
         }
         
