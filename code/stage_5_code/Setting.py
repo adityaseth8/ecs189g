@@ -48,6 +48,6 @@ class Setting(setting):
 
         self.evaluate.data = learned_data
 
-        return self.evaluate.evaluate(), None
+        return self.evaluate.evaluate(7), None
 
 

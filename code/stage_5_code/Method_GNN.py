@@ -15,9 +15,9 @@ class Method_GNN(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     load_model = False
-    max_epoch = 20
-    learning_rate = 1e-3
-    batch_size = 64
+    max_epoch = 200
+    learning_rate = 1e-2
+    # batch_size = 64
     
     numClasses = 7          # CORA
     numFeatures = 1433      # CORA
@@ -81,26 +81,9 @@ class Method_GNN(method, nn.Module):
         plt.savefig(f"./result/stage_5_result/cora_plot.png")
         plt.show()
 
-    def test(self, X):
-        X_tensor = torch.FloatTensor(np.array(X)).to(self.device)
-        X_tensor = X_tensor.view(-1, 3, 32, 32)
-
-        batch_size = 10  # Adjust the batch size as needed
-        num_batches = len(X) // batch_size + 1  # Add 1 to include the last batch
-
-        all_preds = []
-
-        for batch_idx in range(num_batches):
-            start_idx = batch_idx * batch_size
-            end_idx = min((batch_idx + 1) * batch_size, len(X))  # Handle the last batch
-
-            X_batch = torch.Tensor(np.array(X[start_idx:end_idx])).to(self.device)
-            X_batch = X_batch.view(-1, 3, 32, 32)
-
-            y_pred = self.forward(X_batch)
-            all_preds.append(y_pred.cpu())
-        all_preds = torch.cat(all_preds, dim=0)
-        return all_preds.max(1)[1]
+    def test(self, X, adj):
+        y_pred = self.forward(X, adj)
+        return y_pred.max(1)[1]
 
     def run(self):
         print('method running...')
@@ -109,7 +92,7 @@ class Method_GNN(method, nn.Module):
         X_test, y_test, adj_test = self.data['test']['X'], self.data['test']['y'], self.data['test']['adj']
         self.train(X_train, y_train, adj_train)
         print('--start testing...')
-        pred_y = self.test(X_test)
+        pred_y = self.test(X_test, adj_test)
         print('--finish testing...')
         accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
         accuracy_evaluator.data = {'true_y': y_test, 'pred_y': pred_y}
