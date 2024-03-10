@@ -13,10 +13,11 @@ class Method_GNN(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # load_model = False
-    max_epoch = 350
-    learning_rate = 0.01
+    max_epoch = 500
+    learning_rate = 1e-3
     # batch_size = 64
     hidden_size = 512
+    
     num_features = 0
     num_classes = 0
 
@@ -27,8 +28,6 @@ class Method_GNN(method, nn.Module):
         if mName == "GNN Cora":
             self.num_features = 1433
             self.num_classes = 7
-            print("reassigned num classes")
-            
         elif mName == "GNN Citeseer":
             self.num_features = 3703
             self.num_classes = 6
@@ -36,24 +35,29 @@ class Method_GNN(method, nn.Module):
             self.num_features = 500 
             self.num_classes = 3
         
+        self.dropout = 0.3
+        
         # self.gc1 = GraphConvolution(self.num_features, self.num_classes)      # 1 gc layer only
         self.gc1 = GraphConvolution(self.num_features, self.hidden_size)
         self.gc2 = GraphConvolution(self.hidden_size, self.num_classes)
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
-        self.dropout = nn.Dropout(0.5)
+        self.log_softmax = nn.LogSoftmax(dim=1)
+        self.dropout = nn.Dropout(self.dropout)
 
     def forward(self, x, adj):
         out = self.gc1(x, adj)
+        # out = self.relu(out)
         out = self.dropout(out)
-        out = self.relu(out)
         out = self.gc2(out, adj)
         # out = self.dropout(out)
+        # out = self.log_softmax(out)
         out = self.softmax(out)
+        
         return out
 
     def train(self, X, y, adj):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=5e-4)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
         loss_function = nn.CrossEntropyLoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
@@ -63,8 +67,8 @@ class Method_GNN(method, nn.Module):
 
         for epoch in range(self.max_epoch):
             y_pred = self.forward(X.to(self.device), adj)  # do I need to filter adjacency matrix by train and test indices?
-            print(y_pred.shape)
-            print(y.shape)
+            # print(y_pred.shape)
+            # print(y.shape)
             train_loss = loss_function(y_pred, y)
             optimizer.zero_grad()
             train_loss.backward()
