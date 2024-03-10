@@ -19,6 +19,7 @@ if 1:
     data_obj.dataset_source_folder_path = './data/stage_5_data/cora'
     data_obj.dataset_name = 'cora'
 
+    setting_obj = Setting('pre split train test', '')
 
     method_obj = Method_GNN('GNN Cora', '')
 
@@ -26,7 +27,6 @@ if 1:
     result_obj.result_destination_folder_path = './result/stage_5_result/GNN_CORA_'
     result_obj.result_destination_file_name = 'result'
 
-    setting_obj = Setting('pre split train test', '')
 
     evaluate_obj = Evaluate_Accuracy('accuracy', '')
     # ------------------------------------------------------

@@ -33,8 +33,6 @@ class Setting(setting):
         self.method.data = {'train': {'X': X_train, 'y': y_train, 'adj': adj_matrix_train}, 
                             'test': {'X': X_test, 'y': y_test, 'adj': adj_matrix_test},
                             }
-        self.method.num_classes = num_classes
-        self.method.num_features = num_features
         learned_data = self.method.run()
 
         # save raw dataModule
@@ -42,7 +40,7 @@ class Setting(setting):
         self.result.save()
 
         self.evaluate.data = learned_data
-
-        return self.evaluate.evaluate(7), None
+        
+        return self.evaluate.evaluate(learned_data['num_classes']), None
 
 

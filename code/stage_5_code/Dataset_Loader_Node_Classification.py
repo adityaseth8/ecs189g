@@ -69,41 +69,21 @@ class Dataset_Loader(dataset):
         # the following part, you can either put them into the setting class or you can leave them in the dataset loader
         # the following train, test, val index are just examples, sample the train, test according to project requirements
         if self.dataset_name == 'cora':
-            idx_train = range(2166)    # 80/20 split    # range(140)
-            idx_test = range(2166, 2708)         # range(200, 1200)
-            num_classes = 7
-            num_features = 1433
-
-            # idx_val = range(1200, 1500)
+            idx_train = range(140)          # randomly sampled training set with 140 nodes (20 node instances per class)
+            idx_test = range(200, 1250)     # randomly sampled testing set with 1050 nodes (150 node instances per class)
         elif self.dataset_name == 'citeseer':
-            idx_train = range(120)
-            idx_test = range(200, 1200)
-            # idx_val = range(1200, 1500)
-            num_classes = 6
-            num_features = 3703
+            idx_train = range(120)          # randomly sampled training set with 120 nodes (20 node instances per class)
+            idx_test = range(200, 1400)     # randomly sampled testing set with 1200 nodes (200 node instances per class)
         elif self.dataset_name == 'pubmed':
-            idx_train = range(60)
-            idx_test = range(6300, 7300)
-            idx_val = range(6000, 6300)
-            num_classes = 3
-            num_features = 500
-        #---- cora-small is a toy dataset I hand crafted for debugging purposes ---
-        elif self.dataset_name == 'cora-small':
-            idx_train = range(5)
-            idx_val = range(5, 10)
-            idx_test = range(5, 10)
+            idx_train = range(60)           # randomly sampled training set with 60 nodes (20 node instances per class)
+            idx_test = range(6300, 6900)    # randomly sampled testing set with 600 nodes (200 node instances per class)
 
         idx_train = torch.LongTensor(idx_train)
-        # idx_val = torch.LongTensor(idx_val)
         idx_test = torch.LongTensor(idx_test)
 
         # get the training nodes/testing nodes
         train_x, train_y = features[idx_train], labels[idx_train]
         test_x, test_y = features[idx_test], labels[idx_test]
-
-        # get number of unique classes:
-        # len(np.unique(np.array(train_x)))
-        # num_classes = len(torch.unique(labels))
          
         train_test_val_idx = {
             'idx_train' : idx_train,

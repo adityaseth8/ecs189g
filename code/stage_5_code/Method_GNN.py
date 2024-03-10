@@ -13,20 +13,32 @@ class Method_GNN(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # load_model = False
-    max_epoch = 350
+    max_epoch = 50
     learning_rate = 0.01
     # batch_size = 64
     hidden_size = 512
-    num_features = 1433
-    num_classes = 7
-
+    num_features = 0
+    num_classes = 0
 
     def __init__(self, mName, mDescription):
         method.__init__(self, mName, mDescription)
         nn.Module.__init__(self)
+        
+        if mName == "GNN Cora":
+            self.num_features = 1433
+            self.num_classes = 7
+            print("reassigned num classes")
+            
+        elif mName == "GNN Citeseer":
+            self.num_features = 3703
+            self.num_classes = 6
+        elif mName == "GNN Pubmed":
+            self.num_features = 500 
+            self.num_classes = 3
+        
+        # self.gc1 = GraphConvolution(self.num_features, self.num_classes)      # 1 gc layer only
         self.gc1 = GraphConvolution(self.num_features, self.hidden_size)
         self.gc2 = GraphConvolution(self.hidden_size, self.num_classes)
-        # self.gc1 = GraphConvolution(self.num_features, self.num_classes)
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
         self.dropout = nn.Dropout(0.5)
@@ -83,7 +95,6 @@ class Method_GNN(method, nn.Module):
         print('--start training...')
         X_train, y_train, adj_train = self.data['train']['X'], self.data['train']['y'], self.data['train']['adj']
         X_test, y_test, adj_test = self.data['test']['X'], self.data['test']['y'], self.data['test']['adj']
-
         self.train(X_train, y_train, adj_train)
         print('--start testing...')
         pred_y = self.test(X_test, adj_test)
@@ -93,7 +104,7 @@ class Method_GNN(method, nn.Module):
         print('--start evaluation...')
         # print(accuracy_evaluator.evaluate(self.num_classes))
 
-        return {'pred_y': pred_y, 'true_y': self.data['test']['y']}
+        return {'pred_y': pred_y, 'true_y': self.data['test']['y'], 'num_classes': self.num_classes}
 
 class GraphConvolution(Module):
     def __init__(self, in_features, out_hidden, bias=True):
@@ -107,11 +118,11 @@ class GraphConvolution(Module):
             self.register_parameter('bias', None)
 
     def forward(self, input, adj_m):
-        print(input.shape)  # 2166, 1433
-        print(self.weight.shape)   # 1433, 256 (hidden size)
+        # print(input.shape)  # 2166, 1433
+        # print(self.weight.shape)   # 1433, 256 (hidden size)
         support = torch.mm(input, self.weight) 
-        print(adj_m.shape)  # 2166, 256
-        print(support.shape)  # 2166, 2708
+        # print(adj_m.shape)  # 2166, 256
+        # print(support.shape)  # 2166, 2708
         output = torch.spmm(adj_m, support)
         if self.bias is not None:
             return output + self.bias

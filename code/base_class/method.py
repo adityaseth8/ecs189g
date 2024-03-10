@@ -26,9 +26,6 @@ class method:
     method_description = None
     
     data = None
-
-    num_classes = None
-    num_features = None
     
     method_start_time = None
     method_stop_time = None
