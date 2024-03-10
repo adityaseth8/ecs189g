@@ -5,6 +5,7 @@ from code.stage_5_code.Evaluate_Accuracy import Evaluate_Accuracy
 from code.stage_5_code.Setting import Setting
 import numpy as np
 import torch
+import csv
 
 
 # ---- Multi-Layer Perceptron script ----
@@ -40,4 +41,19 @@ if 1:
     print('************ Overall Performance ************')
     print(f'GNN {data_obj.dataset_name} Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
     print('************ Finish ************')
+
+    csv_file_path = 'result/stage_5_result/hyperparam_tuning_cora.csv'
+    with open(csv_file_path, mode='a', newline='') as csv_file:
+        csv_file.write(f'{mean_score}\n')
+
+    # # Open CSV file and write mean_score to a new line
+    # with open('result/stage_5_result/hyperparam_tuning.csv', mode='a', newline='') as csv_file:
+    #     fieldnames = ['mean_Score']
+    #     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+
+    #     # Write the mean_score to the CSV file
+    #     writer.writerow({'mean_Score': mean_score})
+    print('************ LOGGING FINISHED ************')
+
+
     
