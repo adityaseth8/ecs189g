@@ -40,6 +40,32 @@ class Dataset_Loader(dataset):
         onehot_labels = np.array(list(map(classes_dict.get, labels)), dtype=np.int32)
         return onehot_labels
 
+    def get_random_samples(self, features, labels, instances_per_class):
+        unique_labels = torch.unique(labels)
+        sampled_features = []
+        sampled_labels = []
+        indices = []
+
+        for label in unique_labels:
+            class_indices = torch.where(labels == label)[0]
+            sampled_indices = np.random.choice(class_indices.numpy(), instances_per_class, replace=False)
+            sampled_features.append(features[sampled_indices])
+            sampled_labels.append(labels[sampled_indices])
+            indices.append(sampled_indices)
+
+        flattened_list_np = np.array(indices).flatten().tolist()
+
+        print(len(flattened_list_np))
+        sampled_features = torch.cat(sampled_features, dim=0)
+        sampled_labels = torch.cat(sampled_labels, dim=0)
+
+        return sampled_features, sampled_labels, flattened_list_np
+
+    def get_train_and_test(self, features, labels, train_instances_per_label, test_instances_per_label):
+        train_x, train_y, sampled_train_indices = self.get_random_samples(features, labels, train_instances_per_label)
+        test_x, test_y, sampled_test_indices = self.get_random_samples(features, labels, test_instances_per_label)
+        return train_x, train_y, test_x, test_y, sampled_train_indices, sampled_test_indices
+    
     def load(self):
         """Load citation network dataset"""
         print('Loading {} dataset...'.format(self.dataset_name))
@@ -65,37 +91,46 @@ class Dataset_Loader(dataset):
         adj = self.sparse_mx_to_torch_sparse_tensor(norm_adj)
 
         num_classes, num_features = None, None
+        train_idx, test_idx = None, None
 
         # the following part, you can either put them into the setting class or you can leave them in the dataset loader
         # the following train, test, val index are just examples, sample the train, test according to project requirements
         if self.dataset_name == 'cora':
-            idx_train = range(140)          # randomly sampled training set with 140 nodes (20 node instances per class)
-            idx_test = range(200, 1250)     # randomly sampled testing set with 1050 nodes (150 node instances per class)
+            # idx_train = range(140)          # randomly sampled training set with 140 nodes (20 node instances per class)
+            # idx_test = range(200, 1250)     # randomly sampled testing set with 1050 nodes (150 node instances per class)
+            train_instances_per_label = 20
+            test_instances_per_label = 150
+
+            train_x, train_y, test_x, test_y, train_idx, test_idx = self.get_train_and_test(features, labels, train_instances_per_label, test_instances_per_label)
+
         elif self.dataset_name == 'citeseer':
-            idx_train = range(120)          # randomly sampled training set with 120 nodes (20 node instances per class)
-            idx_test = range(200, 1400)     # randomly sampled testing set with 1200 nodes (200 node instances per class)
+            train_instances_per_label = 20
+            test_instances_per_label = 200
+
+            train_x, train_y, test_x, test_y, train_idx, test_idx = self.get_train_and_test(features, labels, train_instances_per_label, test_instances_per_label)
+            # idx_train = range(120)          # randomly sampled training set with 120 nodes (20 node instances per class)
+            # idx_test = range(200, 1400)     # randomly sampled testing set with 1200 nodes (200 node instances per class)
         elif self.dataset_name == 'pubmed':
-            idx_train = range(60)           # randomly sampled training set with 60 nodes (20 node instances per class)
-            idx_test = range(6300, 6900)    # randomly sampled testing set with 600 nodes (200 node instances per class)
+            train_instances_per_label = 20
+            test_instances_per_label = 200
 
-        idx_train = torch.LongTensor(idx_train)
-        idx_test = torch.LongTensor(idx_test)
-
-        # get the training nodes/testing nodes
-        train_x, train_y = features[idx_train], labels[idx_train]
-        test_x, test_y = features[idx_test], labels[idx_test]
-         
-        train_test_val_idx = {
-            'idx_train' : idx_train,
-            'idx_test'  : idx_test,
-        }
+            train_x, train_y, test_x, test_y, train_idx, test_idx = self.get_train_and_test(features, labels, train_instances_per_label, test_instances_per_label)
+            # idx_train = range(60)           # randomly sampled training set with 60 nodes (20 node instances per class)
+            # idx_test = range(6300, 6900)    # randomly sampled testing set with 600 nodes (200 node instances per class)
+        
+        adj = adj.to_dense()
+        train_adj = adj[train_idx, :][:, train_idx]
+        test_adj = adj[test_idx, :][:, test_idx]
+        
         graph = {
-            'node'  : idx_map,
-            'edge'  : edges,
-            'X'     : features,
-            'y'     : labels,
-            'utility': {
+            'node'      : idx_map,
+            'edge'      : edges,
+            'X'         : features,
+            'y'         : labels,
+            'utility'   : {
                 'A'             : adj,
+                'A_train'       : train_adj,
+                'A_test'        : test_adj,
                 'reverse_idx'   : reverse_idx_map,
                 'num_classes'   : num_classes,
                 'num_features'  : num_features
@@ -103,10 +138,9 @@ class Dataset_Loader(dataset):
         }
         
         return {
-            'graph'             : graph, 
-            'train_test_val_idx': train_test_val_idx, 
-            'X_train'           : train_x,
-            'X_test'            : test_x,
-            'y_train'           : train_y,
-            'y_test'            : test_y            
+            'graph'       : graph, 
+            'X_train'     : train_x,
+            'X_test'      : test_x,
+            'y_train'     : train_y,
+            'y_test'      : test_y            
         }

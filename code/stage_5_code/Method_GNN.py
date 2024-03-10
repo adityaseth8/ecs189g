@@ -13,7 +13,7 @@ class Method_GNN(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # load_model = False
-    max_epoch = 50
+    max_epoch = 350
     learning_rate = 0.01
     # batch_size = 64
     hidden_size = 512
