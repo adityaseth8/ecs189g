@@ -102,6 +102,7 @@ class Dataset_Loader(dataset):
             test_instances_per_label = 150
 
             train_x, train_y, test_x, test_y, train_idx, test_idx = self.get_train_and_test(features, labels, train_instances_per_label, test_instances_per_label)
+            # print("in dataset loader got train_x shape: ", train_x.shape)
 
         elif self.dataset_name == 'citeseer':
             train_instances_per_label = 20
@@ -138,9 +139,11 @@ class Dataset_Loader(dataset):
         }
         
         return {
-            'graph'       : graph, 
+            'graph'       : graph,
             'X_train'     : train_x,
             'X_test'      : test_x,
             'y_train'     : train_y,
-            'y_test'      : test_y            
+            'y_test'      : test_y,
+            'train_idx'   : train_idx,
+            'test_idx'    : test_idx        
         }
