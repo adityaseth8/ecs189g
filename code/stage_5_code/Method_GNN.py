@@ -14,10 +14,10 @@ class Method_GNN(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # load_model = False
-    max_epoch = 10
+    max_epoch = 20
     learning_rate = 0.01
-    hidden_size = 32
-    weight_decay = 5e-4
+    hidden_size = 64
+    weight_decay = 1e-3
     # hidden_size1 = 1024
     # hidden_size2 = 128
     num_features = 0
@@ -103,7 +103,7 @@ class Method_GNN(method, nn.Module):
         plt.title('Training Convergence Plot')
         plt.legend()
         plt.savefig(f"./result/stage_5_result/cora_plot.png")
-        plt.show()
+        # plt.show()
         
         # Load best model
         print(f"Best model is at epoch: {best_epoch} with {round(best_model_acc * 100, 2)}% accuracy")
@@ -153,11 +153,11 @@ class GraphConvolution(Module):
             self.bias.data.uniform_(-stdv, stdv)
 
     def forward(self, input, adj_m):
-        print(input.shape)  # 2166, 1433
-        print(self.weight.shape)   # 1433, 256 (hidden size)
+        # print(input.shape)  # 2166, 1433
+        # print(self.weight.shape)   # 1433, 256 (hidden size)
         support = torch.mm(input, self.weight) 
-        print(adj_m.shape)  # 2166, 256
-        print(support.shape)  # 2166, 2708
+        # print(adj_m.shape)  # 2166, 256
+        # print(support.shape)  # 2166, 2708
         output = torch.spmm(adj_m, support)
         if self.bias is not None:
             return output + self.bias

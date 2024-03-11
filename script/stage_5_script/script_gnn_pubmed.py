@@ -41,3 +41,10 @@ if 1:
     print(f'GNN {data_obj.dataset_name} Accuracy: ' + str(mean_score) + ' +/- ' + str(std_score))
     print('************ Finish ************')
     
+    # Write testing accuracy for grid search
+    csv_file_path = 'result/stage_5_result/hyperparam_tuning_pubmed.csv'
+    with open(csv_file_path, mode='a', newline='') as csv_file:
+        csv_file.write(f'{mean_score}\n')
+
+    print('************ LOGGING FINISHED ************')
+    
