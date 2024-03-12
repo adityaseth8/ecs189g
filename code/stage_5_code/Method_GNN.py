@@ -14,12 +14,12 @@ class Method_GNN(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # load_model = False
-    max_epoch = 20
-    learning_rate = 0.01
-    hidden_size = 64
-    weight_decay = 1e-3
-    # hidden_size1 = 1024
-    # hidden_size2 = 128
+    max_epoch = 2
+    learning_rate = 0.005
+    # hidden_size = 64
+    weight_decay = 5e-3
+    hidden_size1 = 128
+    hidden_size2= 128
     num_features = 0
     num_classes = 0
 
@@ -37,14 +37,14 @@ class Method_GNN(method, nn.Module):
             self.num_features = 500 
             self.num_classes = 3
 
-        self.gc1 = GraphConvolution(self.num_features, self.num_classes)      # 1 gc layer only
-        self.gc1 = GraphConvolution(self.num_features, self.hidden_size)
-        # self.gc2 = GraphConvolution(self.hidden_size1, self.hidden_size2)
-        self.gc3 = GraphConvolution(self.hidden_size, self.num_classes)
+        # self.gc1 = GraphConvolution(self.num_features, self.num_classes)      # 1 gc layer only
+        self.gc1 = GraphConvolution(self.num_features, self.hidden_size1)
+        self.gc2 = GraphConvolution(self.hidden_size1, self.hidden_size2)
+        self.gc3 = GraphConvolution(self.hidden_size2, self.num_classes)
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
-        self.dropout1 = nn.Dropout(0.5)
-        # self.dropout2 = nn.Dropout(0.4)
+        self.dropout1 = nn.Dropout(0.6)
+        self.dropout2 = nn.Dropout(0.6)
 
     def forward(self, x, adj):
         # print("method gnn x shape: ", x.shape)
@@ -52,10 +52,12 @@ class Method_GNN(method, nn.Module):
         out = self.gc1(x, adj)
         out = self.relu(out)
         out = self.dropout1(out)
-        # out = self.gc2(out, adj)
-        # out = self.relu(out)
-        # out = self.dropout2(out)
+        out = self.gc2(out, adj)
+        out = self.relu(out)
+        out = self.dropout2(out)
         out = self.gc3(out, adj)
+        out = self.relu(out)
+        out = self.dropout2(out)
         # out = self.softmax(out)
         return out
 
@@ -69,6 +71,7 @@ class Method_GNN(method, nn.Module):
         best_model = None   # Keep track of the best performing model
         best_epoch = None
         best_model_acc = 0
+        best_model_loss = np.inf
         
         # Set y for training
         y = y[self.data['train_idx']]
@@ -86,14 +89,21 @@ class Method_GNN(method, nn.Module):
             accuracy_evaluator.data = {'true_y': y.cpu(), 'pred_y': y_pred.cpu().max(1)[1]}
             accuracy = accuracy_evaluator.evaluate(self.num_classes)  # make sure to change arg for other two datasets
             
-            # Check best performing model
-            if accuracy > best_model_acc:
-                best_model = copy.deepcopy(self.state_dict())
-                best_model_acc = accuracy
-                best_epoch = epoch
+            # Check best performing model for highest accuracy 
+            # if accuracy > best_model_acc:
+            #     best_model = copy.deepcopy(self.state_dict())
+            #     best_model_acc = accuracy
+            #     best_epoch = epoch
                 
             current_loss = train_loss.item()
             losses.append(current_loss)
+            
+            # Check best performing model loss for loss acuracy
+            if current_loss < best_model_loss:
+                best_model = copy.deepcopy(self.state_dict())
+                best_model_loss = current_loss
+                best_epoch = epoch
+            
             epochs.append(epoch)  # Calculate epoch index for each batch
             print('Epoch:', epoch, 'Accuracy:', accuracy, 'Loss:', current_loss)
 
@@ -106,7 +116,8 @@ class Method_GNN(method, nn.Module):
         # plt.show()
         
         # Load best model
-        print(f"Best model is at epoch: {best_epoch} with {round(best_model_acc * 100, 2)}% accuracy")
+        # print(f"Best model is at epoch: {best_epoch} with {round(best_model_acc * 100, 2)}% accuracy")
+        print(f"Best model is at epoch: {best_epoch} with {best_model_loss} loss")
         self.load_state_dict(best_model)
 
     def test(self, X, adj):
