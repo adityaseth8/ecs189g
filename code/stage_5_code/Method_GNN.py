@@ -14,12 +14,12 @@ class Method_GNN(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # load_model = False
-    max_epoch = 2
-    learning_rate = 0.005
-    # hidden_size = 64
-    weight_decay = 5e-3
-    hidden_size1 = 128
-    hidden_size2= 128
+    max_epoch = 20
+    learning_rate = 5e-4
+    hidden_size = 1500 # can't go beyond 3300 bc of input node size
+    weight_decay = 5e-2
+    # hidden_size1 = 1024
+    # hidden_size2 = 128
     num_features = 0
     num_classes = 0
 
@@ -38,13 +38,13 @@ class Method_GNN(method, nn.Module):
             self.num_classes = 3
 
         # self.gc1 = GraphConvolution(self.num_features, self.num_classes)      # 1 gc layer only
-        self.gc1 = GraphConvolution(self.num_features, self.hidden_size1)
-        self.gc2 = GraphConvolution(self.hidden_size1, self.hidden_size2)
-        self.gc3 = GraphConvolution(self.hidden_size2, self.num_classes)
-        self.relu = nn.ReLU()
+        self.gc1 = GraphConvolution(self.num_features, self.hidden_size)
+        # self.gc2 = GraphConvolution(self.hidden_size1, self.hidden_size2)
+        self.gc3 = GraphConvolution(self.hidden_size, self.num_classes)
+        self.relu = nn.LeakyReLU()
         self.softmax = nn.Softmax(dim=1)
-        self.dropout1 = nn.Dropout(0.6)
-        self.dropout2 = nn.Dropout(0.6)
+        self.dropout1 = nn.Dropout(0.3)
+        # self.dropout2 = nn.Dropout(0.4)
 
     def forward(self, x, adj):
         # print("method gnn x shape: ", x.shape)
@@ -52,12 +52,11 @@ class Method_GNN(method, nn.Module):
         out = self.gc1(x, adj)
         out = self.relu(out)
         out = self.dropout1(out)
-        out = self.gc2(out, adj)
-        out = self.relu(out)
-        out = self.dropout2(out)
+        # out = self.gc2(out, adj)
+        # out = self.relu(out)
+        # out = self.dropout2(out)
         out = self.gc3(out, adj)
-        out = self.relu(out)
-        out = self.dropout2(out)
+        # out = self.dropout1(out)
         # out = self.softmax(out)
         return out
 
@@ -99,10 +98,10 @@ class Method_GNN(method, nn.Module):
             losses.append(current_loss)
             
             # Check best performing model loss for loss acuracy
-            if current_loss < best_model_loss:
-                best_model = copy.deepcopy(self.state_dict())
-                best_model_loss = current_loss
-                best_epoch = epoch
+            # if current_loss < best_model_loss:
+            #     best_model = copy.deepcopy(self.state_dict())
+            #     best_model_loss = current_loss
+            #     best_epoch = epoch
             
             epochs.append(epoch)  # Calculate epoch index for each batch
             print('Epoch:', epoch, 'Accuracy:', accuracy, 'Loss:', current_loss)
@@ -117,8 +116,8 @@ class Method_GNN(method, nn.Module):
         
         # Load best model
         # print(f"Best model is at epoch: {best_epoch} with {round(best_model_acc * 100, 2)}% accuracy")
-        print(f"Best model is at epoch: {best_epoch} with {best_model_loss} loss")
-        self.load_state_dict(best_model)
+        # print(f"Best model is at epoch: {best_epoch} with {best_model_loss} loss")
+        # self.load_state_dict(best_model)
 
     def test(self, X, adj):
         y_pred = self.forward(X, adj)
