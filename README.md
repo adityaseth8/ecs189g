@@ -33,3 +33,8 @@ Install the following packages with pip if you do not have them already.
 ## Stage 4 Terminal Shortcuts
    - Classification: `python -m script.stage_4_script.script_text_classification`
    - Generation: `python -m script.stage_4_script.script_text_generation`
+
+## Stage 5 Terminal Shortcuts
+   - Cora: `python -m script.stage_5_script.script_gnn_cora`
+   - Citeseer: `python -m script.stage_5_script.script_gnn_citeseer`
+   - Pubmed: `python -m script.stage_5_script.script_gnn_pubmed`
