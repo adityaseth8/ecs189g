@@ -99,28 +99,22 @@ class Dataset_Loader(dataset):
         # the following part, you can either put them into the setting class or you can leave them in the dataset loader
         # the following train, test, val index are just examples, sample the train, test according to project requirements
         if self.dataset_name == 'cora':
-            # idx_train = range(140)          # randomly sampled training set with 140 nodes (20 node instances per class)
-            # idx_test = range(200, 1250)     # randomly sampled testing set with 1050 nodes (150 node instances per class)
             train_instances_per_label = 20
             test_instances_per_label = 150
 
             train_x, train_y, test_x, test_y, train_idx, test_idx = self.get_train_and_test(features, labels, train_instances_per_label, test_instances_per_label)
-            # print("in dataset loader got train_x shape: ", train_x.shape)
 
         elif self.dataset_name == 'citeseer':
             train_instances_per_label = 20
             test_instances_per_label = 200
 
             train_x, train_y, test_x, test_y, train_idx, test_idx = self.get_train_and_test(features, labels, train_instances_per_label, test_instances_per_label)
-            # idx_train = range(120)          # randomly sampled training set with 120 nodes (20 node instances per class)
-            # idx_test = range(200, 1400)     # randomly sampled testing set with 1200 nodes (200 node instances per class)
+        
         elif self.dataset_name == 'pubmed':
             train_instances_per_label = 20
             test_instances_per_label = 200
 
             train_x, train_y, test_x, test_y, train_idx, test_idx = self.get_train_and_test(features, labels, train_instances_per_label, test_instances_per_label)
-            # idx_train = range(60)           # randomly sampled training set with 60 nodes (20 node instances per class)
-            # idx_test = range(6300, 6900)    # randomly sampled testing set with 600 nodes (200 node instances per class)
         
         adj = adj.to_dense()
         train_adj = adj[train_idx, :][:, train_idx]
