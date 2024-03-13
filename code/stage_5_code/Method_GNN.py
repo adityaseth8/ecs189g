@@ -14,12 +14,10 @@ class Method_GNN(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # load_model = False
-    max_epoch = 20
-    learning_rate = 5e-4
-    hidden_size = 1500 # can't go beyond 3300 bc of input node size
-    weight_decay = 5e-2
-    # hidden_size1 = 1024
-    # hidden_size2 = 128
+    max_epoch = 10
+    learning_rate = 1e-2
+    hidden_size = 512 # can't go beyond 3300 bc of input node size
+    weight_decay = 1e-1
     num_features = 0
     num_classes = 0
 
@@ -37,27 +35,17 @@ class Method_GNN(method, nn.Module):
             self.num_features = 500 
             self.num_classes = 3
 
-        # self.gc1 = GraphConvolution(self.num_features, self.num_classes)      # 1 gc layer only
         self.gc1 = GraphConvolution(self.num_features, self.hidden_size)
-        # self.gc2 = GraphConvolution(self.hidden_size1, self.hidden_size2)
-        self.gc3 = GraphConvolution(self.hidden_size, self.num_classes)
+        self.gc2 = GraphConvolution(self.hidden_size, self.num_classes)
         self.relu = nn.LeakyReLU()
         self.softmax = nn.Softmax(dim=1)
         self.dropout1 = nn.Dropout(0.3)
-        # self.dropout2 = nn.Dropout(0.4)
 
     def forward(self, x, adj):
-        # print("method gnn x shape: ", x.shape)
-        # print("in forward adj shape: ", adj.shape)
         out = self.gc1(x, adj)
         out = self.relu(out)
         out = self.dropout1(out)
-        # out = self.gc2(out, adj)
-        # out = self.relu(out)
-        # out = self.dropout2(out)
-        out = self.gc3(out, adj)
-        # out = self.dropout1(out)
-        # out = self.softmax(out)
+        out = self.gc2(out, adj)
         return out
 
     def train(self, X, y, adj):
@@ -65,13 +53,8 @@ class Method_GNN(method, nn.Module):
         loss_function = nn.CrossEntropyLoss().to(self.device)
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
         losses = []
-        accuracies = []
         epochs = []  # Use epochs instead of batches for x-axis
-        best_model = None   # Keep track of the best performing model
-        best_epoch = None
-        best_model_acc = 0
-        best_model_loss = np.inf
-        
+
         # Set y for training
         y = y[self.data['train_idx']]
 
@@ -87,21 +70,9 @@ class Method_GNN(method, nn.Module):
 
             accuracy_evaluator.data = {'true_y': y.cpu(), 'pred_y': y_pred.cpu().max(1)[1]}
             accuracy = accuracy_evaluator.evaluate(self.num_classes)  # make sure to change arg for other two datasets
-            
-            # Check best performing model for highest accuracy 
-            # if accuracy > best_model_acc:
-            #     best_model = copy.deepcopy(self.state_dict())
-            #     best_model_acc = accuracy
-            #     best_epoch = epoch
                 
             current_loss = train_loss.item()
             losses.append(current_loss)
-            
-            # Check best performing model loss for loss acuracy
-            # if current_loss < best_model_loss:
-            #     best_model = copy.deepcopy(self.state_dict())
-            #     best_model_loss = current_loss
-            #     best_epoch = epoch
             
             epochs.append(epoch)  # Calculate epoch index for each batch
             print('Epoch:', epoch, 'Accuracy:', accuracy, 'Loss:', current_loss)
@@ -112,12 +83,6 @@ class Method_GNN(method, nn.Module):
         plt.title('Training Convergence Plot')
         plt.legend()
         plt.savefig(f"./result/stage_5_result/cora_plot.png")
-        # plt.show()
-        
-        # Load best model
-        # print(f"Best model is at epoch: {best_epoch} with {round(best_model_acc * 100, 2)}% accuracy")
-        # print(f"Best model is at epoch: {best_epoch} with {best_model_loss} loss")
-        # self.load_state_dict(best_model)
 
     def test(self, X, adj):
         y_pred = self.forward(X, adj)
@@ -128,10 +93,6 @@ class Method_GNN(method, nn.Module):
         print('method running...')
         print('--start training...')
         X, y, adj = self.data['X'], self.data['y'], self.data['adj']
-        # X_test, y_test, adj_test = self.data['test']['X'], self.data['test']['y'], self.data['test']['adj']
-        # train_idx, test_idx = self.data['train_idx'], self.data['test_idx']
-        
-        # print("in run X train shape: ", X_train.shape)
         self.train(X, y, adj)
         print('--start testing...')
         pred_y = self.test(X, adj)
@@ -139,7 +100,6 @@ class Method_GNN(method, nn.Module):
         accuracy_evaluator = Evaluate_Accuracy('testing evaluator', '')
         accuracy_evaluator.data = {'true_y': y[self.data['test_idx']], 'pred_y': pred_y}
         print('--start evaluation...')
-        # print(accuracy_evaluator.evaluate(self.num_classes))
 
         return {'pred_y': pred_y, 'true_y': self.data['y'][self.data['test_idx']], 'num_classes': self.num_classes}
 
@@ -163,11 +123,7 @@ class GraphConvolution(Module):
             self.bias.data.uniform_(-stdv, stdv)
 
     def forward(self, input, adj_m):
-        # print(input.shape)  # 2166, 1433
-        # print(self.weight.shape)   # 1433, 256 (hidden size)
         support = torch.mm(input, self.weight) 
-        # print(adj_m.shape)  # 2166, 256
-        # print(support.shape)  # 2166, 2708
         output = torch.spmm(adj_m, support)
         if self.bias is not None:
             return output + self.bias
