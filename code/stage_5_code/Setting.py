@@ -21,5 +21,3 @@ class Setting(setting):
         self.evaluate.data = learned_data
         
         return self.evaluate.evaluate(learned_data['num_classes']), None
-
-

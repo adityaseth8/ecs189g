@@ -8,12 +8,10 @@ import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
 import math
-import copy
 
 class Method_GNN(method, nn.Module):
     # If available, use the first GPU
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # load_model = False
     max_epoch = 10
     learning_rate = 1e-2
     hidden_size = 512 # can't go beyond 3300 bc of input node size
