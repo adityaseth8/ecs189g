@@ -19,6 +19,7 @@ class Dataset_Loader(dataset):
 
     def __init__(self, seed=None, dName=None, dDescription=None):
         super(Dataset_Loader, self).__init__(dName, dDescription)
+        self.added_indices = np.array([])
 
     def adj_normalize(self, mx):
         """normalize sparse matrix"""
@@ -43,18 +44,42 @@ class Dataset_Loader(dataset):
         onehot_labels = np.array(list(map(classes_dict.get, labels)), dtype=np.int32)
         return onehot_labels
 
-    def get_random_samples(self, features, labels, instances_per_class):
-        unique_labels = torch.unique(labels)
+    def get_random_samples(self, features, labels, instances_per_class, added_indices):
+        unique_labels = torch.unique(labels) # 7
         sampled_features = []
         sampled_labels = []
         indices = []
 
-        for label in unique_labels:
+        # # Want non-overlapping samples
+        # while len(sampled_labels) < instances_per_class:
+        #     class_indices = torch.where(labels == label)[0]
+        #     sampled_indices = np.random.choice(class_indices.numpy(), instances_per_class, replace=False)
+        #     if sampled_indices not in added_indices:
+        #         sampled_features.append(features[sampled_indices])
+        #         sampled_labels.append(labels[sampled_indices])
+        #         indices.append(sampled_indices)
+        #         added_indices.add(sampled_indices)
+                
+        # Old code       
+        for label in unique_labels:     # 0 to 6
+            # print(label)
             class_indices = torch.where(labels == label)[0]
+            # print("class indices: ", class_indices)
             sampled_indices = np.random.choice(class_indices.numpy(), instances_per_class, replace=False)
+            # print(sampled_indices)
+            # print(type(sampled_indices))
+
+            while sampled_indices in self.added_indices:
+                sampled_indices = np.random.choice(class_indices.numpy(), instances_per_class, replace=False)
+            
+            self.added_indices = np.append(self.added_indices, sampled_indices)
+            print("length of added indices: ", len(added_indices))
+            
             sampled_features.append(features[sampled_indices])
             sampled_labels.append(labels[sampled_indices])
             indices.append(sampled_indices)
+        
+        # exit()
 
         flattened_list_np = np.array(indices).flatten().tolist()
 
@@ -64,9 +89,20 @@ class Dataset_Loader(dataset):
 
         return sampled_features, sampled_labels, flattened_list_np
 
+    
     def get_train_and_test(self, features, labels, train_instances_per_label, test_instances_per_label):
-        train_x, train_y, sampled_train_indices = self.get_random_samples(features, labels, train_instances_per_label)
-        test_x, test_y, sampled_test_indices = self.get_random_samples(features, labels, test_instances_per_label)
+        # get random sample of train + test
+        # split the random sample into train and test after
+        
+        train_x, train_y, sampled_train_indices = self.get_random_samples(features, labels, train_instances_per_label, self.added_indices)
+        test_x, test_y, sampled_test_indices = self.get_random_samples(features, labels, test_instances_per_label, self.added_indices)
+        
+        print("train shapes: ", train_x.shape, train_y.shape)       # 140 = 7 * 20
+        print("test shapes: ", test_x.shape, test_y.shape)      # 
+        
+        print("num unique indices", len(self.added_indices))
+        # exit()
+        
         return train_x, train_y, test_x, test_y, sampled_train_indices, sampled_test_indices
     
     def load(self):
