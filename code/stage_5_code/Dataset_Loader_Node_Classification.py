@@ -11,7 +11,7 @@ import numpy as np
 import scipy.sparse as sp
 
 # Set seed
-np.random.seed(2)
+np.random.seed(8)
 
 class Dataset_Loader(dataset):
     data = None
@@ -19,6 +19,7 @@ class Dataset_Loader(dataset):
 
     def __init__(self, seed=None, dName=None, dDescription=None):
         super(Dataset_Loader, self).__init__(dName, dDescription)
+        self.added_indices = np.array([])
 
     def adj_normalize(self, mx):
         """normalize sparse matrix"""
@@ -43,19 +44,25 @@ class Dataset_Loader(dataset):
         onehot_labels = np.array(list(map(classes_dict.get, labels)), dtype=np.int32)
         return onehot_labels
 
-    def get_random_samples(self, features, labels, instances_per_class):
-        unique_labels = torch.unique(labels)
+    def get_random_samples(self, features, labels, instances_per_class, added_indices):
+        unique_labels = torch.unique(labels) # 7
         sampled_features = []
         sampled_labels = []
         indices = []
-
+        
         for label in unique_labels:
             class_indices = torch.where(labels == label)[0]
             sampled_indices = np.random.choice(class_indices.numpy(), instances_per_class, replace=False)
+
+            while sampled_indices in self.added_indices:
+                sampled_indices = np.random.choice(class_indices.numpy(), instances_per_class, replace=False)
+            
+            self.added_indices = np.append(self.added_indices, sampled_indices)
+            
             sampled_features.append(features[sampled_indices])
             sampled_labels.append(labels[sampled_indices])
             indices.append(sampled_indices)
-
+        
         flattened_list_np = np.array(indices).flatten().tolist()
 
         print(len(flattened_list_np))
@@ -64,9 +71,14 @@ class Dataset_Loader(dataset):
 
         return sampled_features, sampled_labels, flattened_list_np
 
+    
     def get_train_and_test(self, features, labels, train_instances_per_label, test_instances_per_label):
-        train_x, train_y, sampled_train_indices = self.get_random_samples(features, labels, train_instances_per_label)
-        test_x, test_y, sampled_test_indices = self.get_random_samples(features, labels, test_instances_per_label)
+        # get random sample of train + test
+        # split the random sample into train and test after
+        
+        train_x, train_y, sampled_train_indices = self.get_random_samples(features, labels, train_instances_per_label, self.added_indices)
+        test_x, test_y, sampled_test_indices = self.get_random_samples(features, labels, test_instances_per_label, self.added_indices)
+        
         return train_x, train_y, test_x, test_y, sampled_train_indices, sampled_test_indices
     
     def load(self):
